@@ -1,13 +1,17 @@
+from __future__ import unicode_literals
 import ast
 import asttokens
+import io
 import os
+import sys
 import unittest
 
 def get_fixture_path(*path_parts):
-  return os.path.join(os.path.dirname(__file__), "fixtures", *path_parts)
+  python_dir = 'python%s' % sys.version_info[0]
+  return os.path.join(os.path.dirname(__file__), "testdata", python_dir, *path_parts)
 
 def read_fixture(*path_parts):
-  with open(get_fixture_path(*path_parts), "rb") as f:
+  with io.open(get_fixture_path(*path_parts), "r", newline="\n") as f:
     return f.read()
 
 def collect_nodes_preorder(root):
@@ -17,6 +21,7 @@ def collect_nodes_preorder(root):
     return (None, None)
   asttokens.util.visit_tree(root, append, None)
   return nodes
+
 
 class TestMarkTokens(unittest.TestCase):
 

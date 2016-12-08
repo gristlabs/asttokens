@@ -14,7 +14,7 @@
 
 import ast
 import token
-import util
+from . import util
 
 
 # Mapping of matching braces. To find a token here, look up token[:2].

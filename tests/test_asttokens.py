@@ -1,10 +1,12 @@
+from __future__ import unicode_literals
 import ast
 import asttokens
 import astor    # pylint: disable=import-error
 import token
 import re
+import six
 import unittest
-from test_mark_tokens import read_fixture, collect_nodes_preorder
+from .test_mark_tokens import read_fixture, collect_nodes_preorder
 
 
 def parse_snippet(text):
@@ -21,7 +23,7 @@ def parse_snippet(text):
 
   try:
     module = ast.parse(text, 'exec')
-  except SyntaxError, e:
+  except SyntaxError as e:
     try:
       # If we can't parse it, maybe we can parse the parenthesized version. This will be the case
       # when the text is an expression that contains newlines but is missing enclosing parens.
@@ -32,8 +34,28 @@ def parse_snippet(text):
   body = module.body[0]
   return body.body[0] if indented else body
 
+def to_source(node):
+  # We use astor to convert a node to source code (for verifying whether we got correct text
+  # corresponding to a node). Unfortunately, astor has a bug with Call/ClassDef nodes in
+  # python3.5+. We work around it here by adding missing starargs attributes to such nodes.
+  if hasattr(ast, 'Starred'):
+    for n in ast.walk(node):
+      if isinstance(n, (ast.Call, ast.ClassDef)) and not hasattr(n, 'starargs'):
+        # pylint: disable=no-member
+        plain_args = n.args if isinstance(n, ast.Call) else n.bases
+        n.starargs = next((arg.value for arg in plain_args if isinstance(arg, ast.Starred)), None)
+        n.args = [arg for arg in plain_args if not isinstance(arg, ast.Starred)]
+        n.kwargs = next((arg.value for arg in n.keywords if arg.arg is None), None)
+        n.keywords = [arg for arg in n.keywords if arg.arg is not None]
+  return astor.to_source(node)
+
 
 class TestASTTokens(unittest.TestCase):
+
+  def test_astor_fix(self):
+    source = "foo(a, b, c=2, *d, **e)"
+    root = ast.parse(source)
+    self.assertEqual(to_source(root), source)
 
   def test_tokenizing(self):
     # Test that we produce meaningful tokens on initialization.
@@ -97,6 +119,7 @@ class TestASTTokens(unittest.TestCase):
     # expressions, that piece should itself be compilable, and the resulting AST node should be
     # equivalent.
     paths = [
+      'astroid/__init__.py',
       'astroid/absimport.py',
       'astroid/all.py',
       'astroid/clientmodule_test.py',
@@ -116,18 +139,22 @@ class TestASTTokens(unittest.TestCase):
       atok = asttokens.ASTTokens(source)
       atok.mark_tokens(root)
 
-      for node in ast.walk(root):
-        if not isinstance(node, (ast.stmt, ast.expr)):
-          continue
-        text = atok.get_text(node)
-        rebuilt_node = parse_snippet(text)
+      self.verify_all_nodes(atok, root)
 
-        # Now we need to check if the two nodes are equivalent.
-        try:
-          self.assertEqual(astor.to_source(rebuilt_node), astor.to_source(node))
-        except AssertionError, e:
-          print "OUTPUT DIFFERS FOR:", text
-          raise
+
+  def verify_all_nodes(self, atok, root):
+    for node in ast.walk(root):
+      if not isinstance(node, (ast.stmt, ast.expr)):
+        continue
+      text = atok.get_text(node)
+      rebuilt_node = parse_snippet(text)
+
+      # Now we need to check if the two nodes are equivalent.
+      try:
+        self.assertEqual(to_source(rebuilt_node), to_source(node))
+      except AssertionError as e:
+        print("OUTPUT DIFFERS FOR:", text)
+        raise
 
   def test_deep_recursion(self):
     # This testcase has 1050 strings joined with '+', which causes naive recursions to fail with
@@ -176,6 +203,9 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(get_node_text(16, 8, 'Call'), "print(v.get('yo'))")
     self.assertEqual(get_node_text(16, 14, 'Attribute'), 'v.get')
     self.assertEqual(get_node_text(16, 14, 'Call'), "v.get('yo')")
+
+    if six.PY3:
+      self.verify_all_nodes(atok, root)
 
 if __name__ == "__main__":
   unittest.main()

@@ -19,7 +19,8 @@ import token
 
 def token_repr(tok_type, string):
   """Returns a human-friendly representation of a token with the given type and string."""
-  return '%s:%r' % (token.tok_name[tok_type], string)
+  # repr() prefixes unicode with 'u' on Python2 but not Python3; strip it out for consistency.
+  return '%s:%s' % (token.tok_name[tok_type], repr(string).lstrip('u'))
 
 
 class Token(collections.namedtuple('Token', 'type string start end line index startpos endpos')):

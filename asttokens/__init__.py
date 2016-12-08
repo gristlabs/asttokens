@@ -20,5 +20,5 @@ transformations.
 See README.md for overview and examples.
 """
 
-from line_numbers import LineNumbers
-from asttokens import ASTTokens
+from .line_numbers import LineNumbers
+from .asttokens import ASTTokens
