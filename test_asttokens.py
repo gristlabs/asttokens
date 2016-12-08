@@ -1,11 +1,14 @@
 import ast
 import asttokens
+import astor    # pylint: disable=import-error
 import os
 import token
+import re
 import unittest
 
 
 class TestLineNumbers(unittest.TestCase):
+
   def test_linenumbers(self):
     ln = asttokens.LineNumbers("Hello\nworld\nThis\n\nis\n\na test.\n")
     self.assertEqual(ln.line_to_offset(1, 0), 0)
@@ -37,6 +40,7 @@ class TestLineNumbers(unittest.TestCase):
     self.assertEqual(ln.offset_to_line(30), (8, 0))
     self.assertEqual(ln.offset_to_line(100), (8, 0))
     self.assertEqual(ln.offset_to_line(-100), (1, 0))
+
 
 class TestCodeText(unittest.TestCase):
 
@@ -94,53 +98,16 @@ class TestCodeText(unittest.TestCase):
                      ctext.tokens[4:7])
 
 
+
+def get_fixture_path(*path_parts):
+  return os.path.join(os.path.dirname(__file__), "fixtures", *path_parts)
+
+def read_fixture(*path_parts):
+  with open(get_fixture_path(*path_parts), "rb") as f:
+    return f.read()
+
+
 class TestAssignTokensVisitor(unittest.TestCase):
-
-  #def test_simple_code(self):
-  #  source = "import re  # comment\n\nfoo = 'bar'\n"
-  #  root = ast.parse(source)
-  #  ast.fix_missing_locations(root)
-  #  code = asttokens.CodeText(source)
-  #  asttokens.assign_first_tokens(root, code)
-  #  for node in ast.walk(root):
-  #    print "NODE %s:%s %s %s" % (
-  #      getattr(node, 'lineno', None),
-  #      getattr(node, 'col_offset', None),
-  #      getattr(node, 'first_token', None),
-  #      ast.dump(node, True, True))
-  #    #print "  %r" % asttokens.get_text(node, source)
-
-  #  # asttokens.AssignLastToken(code).visit(root)
-  #  # for node in ast.walk(root):
-  #  #   print "NODE %s:%s %s-%s %s" % (
-  #  #     getattr(node, 'lineno', None),
-  #  #     getattr(node, 'col_offset', None),
-  #  #     getattr(node, 'first_token', None),
-  #  #     getattr(node, 'last_token', None),
-  #  #     ast.dump(node, True, True))
-  #  #   print "  %r" % asttokens.get_text(node, source)
-
-  #  # #code.mark_tokens(root)
-
-  #def test_more(self):
-  #  source = read_fixture('astroid', 'module2.py')
-  #  root = ast.parse(source)
-  #  print repr(root)
-  #  code = asttokens.CodeText(source)
-  #  asttokens.assign_first_tokens(root, code)
-
-  #  print source
-  #  for node in asttokens.walk(root):
-  #    #if isinstance(node, (ast.NAME, ast.STRING)):
-  #    #  continue
-  #    if getattr(node, 'lineno', None):
-  #      print "LINE", source.splitlines()[getattr(node, 'lineno', None) - 1]
-  #    print "NODE %s:%s %s %s" % (
-  #      getattr(node, 'lineno', None),
-  #      getattr(node, 'col_offset', None),
-  #      getattr(node, 'first_token', None),
-  #      repr(node))#ast.dump(node, True, True))
-
 
   def test_assign_first_tokens(self):
     source = read_fixture('astroid', 'module.py')
@@ -170,7 +137,7 @@ class TestAssignTokensVisitor(unittest.TestCase):
     self.assertEqual(get_node_types_at(59, 26), {'Name'})
     self.assertEqual(get_node_types_at(59, 37), {'Name', 'keyword'})
 
-  def test_mark_tokens(self):
+  def test_mark_tokens_simple(self):
     source = read_fixture('astroid', 'module.py')
     root = ast.parse(source)
     code = asttokens.CodeText(source)
@@ -181,24 +148,117 @@ class TestAssignTokensVisitor(unittest.TestCase):
       token = code.get_token(line, col)
       for n in all_nodes:
         if n.first_token == token and n.__class__.__name__ == type_name:
-          return asttokens.get_text(n, source)
+          return code.get_text(n)
+
+    # Line 14 is: [indent 4] MY_DICT[key] = val
+    self.assertEqual(get_node_text(14, 4, 'Name'), 'MY_DICT')
+    self.assertEqual(get_node_text(14, 4, 'Subscript'), 'MY_DICT[key]')
+    self.assertEqual(get_node_text(14, 4, 'Assign'), 'MY_DICT[key] = val')
 
     # Line 35 is: [indent 12] raise XXXError()
     self.assertEqual(get_node_text(35, 12, 'Raise'), 'raise XXXError()')
+    self.assertEqual(get_node_text(35, 18, 'Call'), 'XXXError()')
+    self.assertEqual(get_node_text(35, 18, 'Name'), 'XXXError')
 
-# TODO
-# - Fix borken test
-# - Add a few checks to test_mark_tokens -- rename to _simple
-# - Add more generic test: for each node, if expr or stmt, try to recreate and compare outputs.
+    # Line 53 is: [indent 12] autre = [a for (a, b) in MY_DICT if b]
+    self.assertEqual(get_node_text(53, 20, 'ListComp'), '[a for (a, b) in MY_DICT if b]')
+    self.assertEqual(get_node_text(53, 21, 'Name'), 'a')
+
+  def test_foo(self):
+    source = "(a,\na + b\n + c + d)"
+    root = ast.parse(source)
+    code = asttokens.CodeText(source)
+    for t in  code.tokens:
+      print t
+    code.mark_tokens(root)
+    for n in ast.walk(root):
+      print repr(n), ast.dump(n, include_attributes=True)
+      print code.get_text(n)
+
+  def xxxtest_bar(self):
+    source = read_fixture("astroid", "joined_strings.py")
+    root = ast.parse(source)
+    all_nodes = [n for n in ast.walk(root)]
+    class NV(ast.NodeVisitor):
+      def __init__(self):
+        self.count = 0
+      def visit(self, node):
+        self.generic_visit(node)
+        self.count += 1
+    nv = NV()
+    nv.visit(root)
+    self.assertEqual(len(all_nodes), nv.count)
+    self.assertEqual(nv.count, 1)
+
+  def test_mark_tokens_multiline(self):
+    source = (
+"""(    # line1
+a,      # line2
+b +     # line3
+  c +   # line4
+  d     # line5
+)""")
+    root = ast.parse(source)
+    code = asttokens.CodeText(source)
+    code.mark_tokens(root)
+
+    all_nodes = {code.get_text(node) for node in ast.walk(root)}
+    self.assertEqual(all_nodes, {
+      None,           # nodes we don't care about
+      source,
+      'a', 'b', 'c', 'd',
+      # All other expressions preserve newlines and comments but are parenthesized.
+      '(b +     # line3\n  c)',
+      '(b +     # line3\n  c +   # line4\n  d)',
+      '(a,      # line2\nb +     # line3\n  c +   # line4\n  d)',
+    })
 
 
-def get_fixture_path(*path_parts):
-  return os.path.join(os.path.dirname(__file__), "fixtures", *path_parts)
+  def test_mark_tokens(self):
+    # There is a generic way to test. We can take an arbitrary piece of code, parse it, and for
+    # each AST node, extract the piece of code text from first to last token. For many node types,
+    # that piece should itself be compilable, and the resulting AST node should be equivalent.
+    dir_path = get_fixture_path("astroid")
+    for module in os.listdir(dir_path):
+      if not module.endswith('.py'):
+        continue
+      print "PROCESSING", module
+      source = read_fixture("astroid", module)
+      root = ast.parse(source)
+      code = asttokens.CodeText(source)
+      code.mark_tokens(root)
 
-def read_fixture(*path_parts):
-  with open(get_fixture_path(*path_parts), "rb") as f:
-    return f.read()
+      for node in ast.walk(root):
+        if not isinstance(node, (ast.stmt, ast.expr)):
+          continue
+        # TODO Bleh. dedent gets borken when there are unindented comments.
+        text = code.get_text(node)
+        indented = re.match(r'^[ \t]+\S', text)
+        if indented:
+          text = "def dummy():\n" + text
+        #print "TEXT", text
+        try:
+          rebuilt_node = ast.parse(text, 'exec').body[0]
+        except Exception:
+          print "CAN'T PARSE", text, repr(text)
+          raise
+        if indented:
+          rebuilt_node = rebuilt_node.body[0]
 
+        if isinstance(node, ast.expr) and isinstance(rebuilt_node, ast.Expr):
+          rebuilt_node = rebuilt_node.value
+
+        # Now we need to check if the two nodes are equivalent.
+        try:
+          self.assertEqual(astor.to_source(rebuilt_node),
+                           astor.to_source(node))
+        except RuntimeError, e:
+          print "COMPARISON FAILED", e
+          break
+        except AssertionError, e:
+          print "OUTPUT DIFFERS", text
+          print "FAILED", e
+          #raise
 
 if __name__ == "__main__":
   unittest.main()

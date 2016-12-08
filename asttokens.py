@@ -30,23 +30,7 @@ import re
 import token
 import tokenize
 from cStringIO import StringIO
-#import textwrap
 
-
-def mark_tokens(root_node, source_text):
-  """
-  Given the root of the AST tree produced from source_text, visits all nodes marking them with
-  token and position information by adding .first_token and .last_token attributes.
-  """
-  CodeText(source_text).mark_tokens(root_node)
-
-
-def get_text(node, source_text):
-  """
-  Given a node from the tree processed by mark_tokens() and the source_text that produced that
-  tree, returns the text corresponding to the node.
-  """
-  return source_text[node.first_token.startpos : node.last_token.endpos]
 
 
 _line_start_re = re.compile(r'^', re.M)
@@ -197,11 +181,38 @@ class CodeText(object):
 
   def mark_tokens(self, root_node):
     """
-    Given the root of the AST tree produced from the code represented by this object, visits all
-    nodes containing with position information, adding .first_token and .last_token attributes.
+    Given the root of the AST tree produced from source_text, visits all nodes marking them with
+    token and position information by adding .first_token and .last_token attributes.
     """
-    AssignFirstTokens(self).visit(root_node, None)
-    AssignLastTokens(self).visit(root_node)
+    AssignFirstTokens(self).visit_tree(root_node)
+    AssignLastTokens(self).visit_tree(root_node)
+
+  def get_text(self, node):
+    """
+    After mark_tokens() has been called, returns the text corresponding to the given node.
+    """
+    if not hasattr(node, 'first_token'):
+      return None
+
+    if any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
+      # Multi-line nodes would be invalid unless we keep the indentation of the first node.
+      indent_start = self._text.rfind('\n', 0, node.first_token.startpos) + 1
+      return self._text[indent_start : node.last_token.endpos]
+
+    text = self._text[node.first_token.startpos : node.last_token.endpos]
+    if (isinstance(node, ast.expr) and
+          any(match_token(t, tokenize.NL) for t in self.get_tokens(node, include_extra=True))):
+      # TODO This feature probably shouldn't be part of get_text() but get_valid_expr().
+      # If we don't have logical lines, but do have newlines, then it's important to parenthesize
+      # the text or else it's not valid code. Except that maybe it's already parenthesized.
+      if not (node.first_token[:2] in _matching_pairs and
+          node.last_token[:2] == _matching_pairs[node.first_token[:2]]):
+        return '(' + text + ')'
+
+    return text
+
+  def get_tokens(self, node, include_extra=False):
+    return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
 
 def match_token(token, tok_type, tok_str=None):
@@ -264,6 +275,39 @@ class NodeMethods(object):
       self._cache[cls] = method
     return method
 
+_PREVISIT = object()
+
+def visit_tree(node, previsit, postvisit):
+  """
+  Depth-first scan helper. Rather than use implicit recursion via the function call stack, this
+  uses an explicit stack to avoid hitting 'maximum recursion depth exceeded' error. It calls
+  previsit and postvisit as follows:
+    previsit(node, par_value): par_value is as returned from previsit() of the parent. Should
+          return (par_value, value).
+    postvisit(node, par_value, value): par_value is as returned from previsit() of the parent, and
+          value is as returned from previsit() of this node itself.
+  For the initial node, par_value is None.
+  Either of previsit and postvisit may be None.
+  Returns the return value of the postvisit() call on the root node.
+  """
+  if not previsit:
+    previsit = lambda node, pvalue: (None, None)
+  if not postvisit:
+    postvisit = lambda node, pvalue, value: None
+
+  ret = None
+  stack = [(node, None, _PREVISIT)]
+  while stack:
+    current, par_value, value = stack.pop()
+    if value is _PREVISIT:
+      pvalue, post_value = previsit(current, par_value)
+      stack.append((current, par_value, post_value))
+      children = [(n, pvalue, _PREVISIT) for n in iter_children(current)]
+      stack.extend(reversed(children))
+    else:
+      ret = postvisit(current, par_value, value)
+  return ret
+
 
 class AssignFirstTokens(object):
   """
@@ -275,20 +319,36 @@ class AssignFirstTokens(object):
     self._code = code
     self._methods = NodeMethods()
 
-  def visit(self, node, parent_token):
+  def visit_tree(self, node):
+    visit_tree(node, self._visit_before_children, self._visit_after_children)
+
+  def _visit_before_children(self, node, parent_token):
     col = getattr(node, 'col_offset', None)
     token = self._code.get_token(node.lineno, col) if col is not None else None
+    return (token or parent_token, token)
 
-    first_child = None
-    for child in iter_children(node):
-      self.visit(child, token or parent_token)
-      if not first_child:
-        first_child = child
-
-    if not token:
+  def _visit_after_children(self, node, parent_token, token):
+    first_child = next(iter_children(node), None)
+    if not token or (first_child and first_child.first_token.index < token.index):
       token = first_child.first_token if first_child else parent_token
-
     node.first_token = self._methods.get(self, node.__class__)(node, token)
+
+
+
+  #def visit(self, node, parent_token):
+  #  col = getattr(node, 'col_offset', None)
+  #  token = self._code.get_token(node.lineno, col) if col is not None else None
+
+  #  first_child = None
+  #  for child in iter_children(node):
+  #    self.visit(child, token or parent_token)
+  #    if not first_child:
+  #      first_child = child
+
+  #  if not token or (first_child and first_child.first_token.index < token.index):
+  #    token = first_child.first_token if first_child else parent_token
+
+  #  node.first_token = self._methods.get(self, node.__class__)(node, token)
 
   def visit_default(self, node, first_token):
     # pylint: disable=no-self-use
@@ -309,6 +369,7 @@ _matching_pairs = {
   (token.OP, '{'): (token.OP, '}'),
 }
 
+#import inspect
 
 class AssignLastTokens(object):
   """
@@ -318,34 +379,18 @@ class AssignLastTokens(object):
     self._code =code
     self._methods = NodeMethods()
 
-  def visit(self, node):
+  def visit_tree(self, node):
+    visit_tree(node, None, self._visit_after_children)
+
+  def _visit_after_children(self, node, par_value, value):
+    # Find the last child
     child = None
     for child in iter_children(node):
-      self.visit(child)
+      pass
 
-    node.last_token = self._methods.get(self, node.__class__)(node, child)
-
-  def _find_last_in_line(self, start_token):
-    newline = self._code.find_token(start_token, token.NEWLINE)
-    return self._code.prev_token(newline)
-
-  def _iter_non_child_tokens(self, first_token, last_token, node):
-    """
-    Generates all tokens in [first_token, last_token] range that do not belong to any children of
-    node. E.g. `foo(bar)` has children `foo` and `bar`, but we would yield the `(`.
-    """
-    tok = first_token
-    for n in iter_children(node):
-      for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
-        yield t
-      tok = self._code.next_token(n.last_token)
-
-    for t in self._code.token_range(tok, last_token):
-      yield t
-
-  def visit_default(self, node, last_child):
+    # Process the node generically first.
     first = node.first_token
-    last = last_child.last_token if last_child else first
+    last = child.last_token if child else first
 
     # We look for opening parens/braces among non-child nodes. If we find any closing ones, we
     # match them to the opens.
@@ -366,6 +411,40 @@ class AssignLastTokens(object):
     if isinstance(node, ast.stmt):
       last = self._find_last_in_line(last)
 
+    node.last_token = self._methods.get(self, node.__class__)(node, child, last)
+
+    #before = self._code.text[node.first_token.startpos - 5 : node.first_token.startpos]
+    #middle = self._code.text[node.first_token.startpos : node.last_token.endpos][:10]
+    #after = self._code.text[node.last_token.endpos : node.last_token.endpos + 5]
+    #print "visited %r %s %s:%s set text '%s<<<%s...>>>%s'" % (
+    #  node, inspect.getmro(node.__class__),
+    #  getattr(node, 'lineno', None),
+    #  getattr(node, 'col_offset', None),
+    #  before, middle, after)
+
+  def _find_last_in_line(self, start_token):
+    try:
+      newline = self._code.find_token(start_token, token.NEWLINE)
+    except IndexError:
+      newline = self._code.find_token(start_token, token.ENDMARKER)
+    return self._code.prev_token(newline)
+
+  def _iter_non_child_tokens(self, first_token, last_token, node):
+    """
+    Generates all tokens in [first_token, last_token] range that do not belong to any children of
+    node. E.g. `foo(bar)` has children `foo` and `bar`, but we would yield the `(`.
+    """
+    tok = first_token
+    for n in iter_children(node):
+      for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
+        yield t
+      tok = self._code.next_token(n.last_token)
+
+    for t in self._code.token_range(tok, last_token):
+      yield t
+
+  def visit_default(self, node, last_child, last):
+    # pylint: disable=no-self-use
     return last
 
   #def visit_classdef(self, node, last_child):
@@ -380,28 +459,36 @@ class AssignLastTokens(object):
   #    last = self._find_token(last, token.STRING)
   #  return (first, last)
 
-  #def visit_attribute(self, node):
-  #  dot = self.next_token(node.expr.last_token)
-  #  _expect_token(dot, token.OP, '.')
-  #  return (node.expr.first_token, self.next_token(dot))
+  def handle_attr(self, node, last_child, last):
+    dot = self._code.next_token(last)
+    name = self._code.next_token(dot)
+    _expect_token(dot, token.OP, '.')
+    _expect_token(name, token.NAME)
+    return name
 
-  #def visit_assignattr(self, node):
-  #  dot = self.next_token(node.expr.last_token)
-  #  _expect_token(dot, token.OP, '.')
-  #  return (node.expr.first_token, self.next_token(dot))
+  def visit_attribute(self, node, last_child, last):
+    return self.handle_attr(node, last_child, last)
 
-  #def visit_delattr(self, node):
-  #  dot = self.next_token(node.expr.last_token)
-  #  _expect_token(dot, token.OP, '.')
-  #  return (node.expr.first_token, self.next_token(dot))
+  def visit_assignattr(self, node, last_child, last):
+    return self.handle_attr(node, last_child, last)
 
-  #def visit_call(self, node):
-  #  first, last = self.visit_default(node)
-  #  return (first, self._find_token(last, token.OP, ')'))
+  def visit_delattr(self, node, last_child, last):
+    return self.handle_attr(node, last_child, last)
 
-  #def visit_subscript(self, node):
-  #  first, last = self.visit_default(node)
-  #  return (first, self._find_token(last, token.OP, ']'))
+  def visit_call(self, node, last_child, last):
+    return self._code.find_token(last, token.OP, ')')
+
+  def visit_tuple(self, node, last_child, last):
+    try:
+      maybe_comma = self._code.next_token(last)
+      if match_token(maybe_comma, token.OP, ','):
+        last = maybe_comma
+    except IndexError:
+      pass
+    return last
+
+  def visit_subscript(self, node, last_child, last):
+    return self._code.find_token(last, token.OP, ']')
 
   ##def visit_index(self, node):
   ##  return self.visit_default(node.value)
@@ -414,9 +501,9 @@ class AssignLastTokens(object):
   #  _expect_token(after, token.OP, ']')
   #  return (before, after)
 
-  #def visit_const(self, node):
-  #  first, last = self.visit_default(node)
-  #  while match_token(last, token.OP):
-  #    last = self.next_token(last)
-  #  return (first, last)
+  def visit_num(self, node, last_child, last):
+    # A constant like '-1' gets turned into two tokens; this will skip the '-'.
+    while match_token(last, token.OP):
+      last = self._code.next_token(last)
+    return last
 
