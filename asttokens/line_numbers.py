@@ -21,11 +21,36 @@ class LineNumbers(object):
   """
   Class to convert between character offsets in a text string, and pairs (line, column) of 1-based
   line and 0-based column numbers, as used by tokens and AST nodes.
+
+  This class expects unicode for input and stores positions in unicode. But it supports
+  translating to and from utf8 offsets, which are used by ast parsing.
   """
   def __init__(self, text):
     # A list of character offsets of each line's first character.
     self._line_offsets = [m.start(0) for m in _line_start_re.finditer(text)]
+    self._text = text
     self._text_len = len(text)
+    self._utf8_offset_cache = {}    # maps line num to list of utf8 offsets for chars in that line
+
+  def from_utf8_col(self, line, utf8_column):
+    """
+    Given a 1-based line number and 0-based utf8 column, returns a 0-based unicode column.
+    """
+    offsets = self._utf8_offset_cache.get(line)
+    if offsets is None:
+      end_offset = self._line_offsets[line] if line < len(self._line_offsets) else self._text_len
+      line_text = self._text[self._line_offsets[line - 1] : end_offset]
+
+      offset = 0
+      offsets = [0]
+      for c in line_text:
+        offset += len(c.encode('utf8'))
+        offsets.append(offset)
+
+      self._utf8_offset_cache[line] = offsets
+
+    char_column = bisect.bisect_right(offsets, utf8_column) - 1
+    return char_column
 
   def line_to_offset(self, line, column):
     """

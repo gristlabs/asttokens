@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 -*-
+from __future__ import unicode_literals
 import asttokens
 import unittest
 
@@ -35,4 +37,28 @@ class TestLineNumbers(unittest.TestCase):
     self.assertEqual(ln.offset_to_line(100), (8, 0))
     self.assertEqual(ln.offset_to_line(-100), (1, 0))
 
+  def test_unicode(self):
+    ln = asttokens.LineNumbers("фыва\nячсм")
+    self.assertEqual(ln.line_to_offset(1, 0), 0)
+    self.assertEqual(ln.line_to_offset(1, 4), 4)
+    self.assertEqual(ln.line_to_offset(2, 0), 5)
+    self.assertEqual(ln.line_to_offset(2, 4), 9)
 
+    self.assertEqual(ln.offset_to_line(0), (1, 0))
+    self.assertEqual(ln.offset_to_line(4), (1, 4))
+    self.assertEqual(ln.offset_to_line(5), (2, 0))
+    self.assertEqual(ln.offset_to_line(9), (2, 4))
+
+  def test_utf8_offsets(self):
+    ln = asttokens.LineNumbers("фыва\nф.в.")
+    self.assertEqual(ln.from_utf8_col(1, 0), 0)
+    self.assertEqual(ln.from_utf8_col(1, 2), 1)
+    self.assertEqual(ln.from_utf8_col(1, 3), 1)
+    self.assertEqual(ln.from_utf8_col(1, 6), 3)
+    self.assertEqual(ln.from_utf8_col(1, 8), 4)
+    self.assertEqual(ln.from_utf8_col(2, 0), 0)
+    self.assertEqual(ln.from_utf8_col(2, 2), 1)
+    self.assertEqual(ln.from_utf8_col(2, 3), 2)
+    self.assertEqual(ln.from_utf8_col(2, 4), 2)
+    self.assertEqual(ln.from_utf8_col(2, 5), 3)
+    self.assertEqual(ln.from_utf8_col(2, 6), 4)

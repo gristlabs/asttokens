@@ -38,7 +38,7 @@ class AssignFirstTokens(object):
 
   def _visit_before_children(self, node, parent_token):
     col = getattr(node, 'col_offset', None)
-    token = self._code.get_token(node.lineno, col) if col is not None else None
+    token = self._code.get_token_from_utf8(node.lineno, col) if col is not None else None
     # Use our own token, or our parent's if we don't have one, to pass to child calls as
     # parent_token argument. The second value becomes the token argument of _visit_after_children.
     return (token or parent_token, token)
@@ -131,6 +131,8 @@ class AssignLastTokens(object):
     for n in util.iter_children(node):
       for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
         yield t
+      if n.last_token.index >= last_token.index:
+        return
       tok = self._code.next_token(n.last_token)
 
     for t in self._code.token_range(tok, last_token):

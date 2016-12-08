@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 from __future__ import unicode_literals
 import ast
 import asttokens
@@ -80,6 +81,7 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(atok.tokens[5].index, 5)
     self.assertEqual(atok.tokens[5].startpos, 22)
     self.assertEqual(atok.tokens[5].endpos, 25)
+
 
   def test_token_methods(self):
     # Test the methods that deal with tokens: prev/next_token, get_token, get_token_from_offset.
@@ -206,6 +208,52 @@ class TestASTTokens(unittest.TestCase):
 
     if six.PY3:
       self.verify_all_nodes(atok, root)
+
+
+  def test_unicode_offsets(self):
+    # ast modules provides utf8 offsets, while tokenize uses unicode offsets. Make sure we
+    # translate correctly.
+    source = "foo('фыва',a,b)"
+    atok = asttokens.ASTTokens(source)
+    self.assertEqual([six.text_type(t) for t in atok.tokens], [
+      "NAME:'foo'",
+      "OP:'('",
+      'STRING:"%s"' % repr('фыва').lstrip('u'),
+      "OP:','",
+      "NAME:'a'",
+      "OP:','",
+      "NAME:'b'",
+      "OP:')'",
+      "ENDMARKER:''"
+    ])
+    self.assertEqual(atok.tokens[2].startpos, 4)
+    self.assertEqual(atok.tokens[2].endpos, 10)      # Counting characters, not bytes
+    self.assertEqual(atok.tokens[4].startpos, 11)
+    self.assertEqual(atok.tokens[4].endpos, 12)
+    self.assertEqual(atok.tokens[6].startpos, 13)
+    self.assertEqual(atok.tokens[6].endpos, 14)
+
+    root = ast.parse(source)
+
+    # Verify that ast parser produces offsets as we expect. This is just to inform the
+    # implementation.
+    string_node = next(n for n in ast.walk(root) if isinstance(n, ast.Str))
+    self.assertEqual(string_node.lineno, 1)
+    self.assertEqual(string_node.col_offset, 4)
+
+    a_node = next(n for n in ast.walk(root) if isinstance(n, ast.Name) and n.id == 'a')
+    self.assertEqual((a_node.lineno, a_node.col_offset), (1, 15))   # Counting bytes, not chars.
+
+    b_node = next(n for n in ast.walk(root) if isinstance(n, ast.Name) and n.id == 'b')
+    self.assertEqual((b_node.lineno, b_node.col_offset), (1, 17))
+
+    # Here we verify that we use correct offsets (translating utf8 to unicode offsets) when
+    # extracting text ranges.
+    atok.mark_tokens(root)
+    self.assertEqual(atok.get_text(string_node), "'фыва'")
+    self.assertEqual(atok.get_text(a_node), "a")
+    self.assertEqual(atok.get_text(b_node), "b")
+
 
 if __name__ == "__main__":
   unittest.main()

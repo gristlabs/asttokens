@@ -78,6 +78,12 @@ class ASTTokens(object):
     # but isn't explicit.
     return self.get_token_from_offset(self._line_numbers.line_to_offset(lineno, col_offset))
 
+  def get_token_from_utf8(self, lineno, col_offset):
+    """
+    Same as get_token(), but interprets col_offset as a UTF8 offset, which is what `ast` uses.
+    """
+    return self.get_token(lineno, self._line_numbers.from_utf8_col(lineno, col_offset))
+
   def next_token(self, tok, include_extra=False):
     """
     Returns the next token after the given one. If include_extra is True, includes non-coding
@@ -107,7 +113,7 @@ class ASTTokens(object):
     """
     t = start_token
     advance = self.prev_token if reverse else self.next_token
-    while not match_token(t, tok_type, tok_str):
+    while not match_token(t, tok_type, tok_str) and not token.ISEOF(t.type):
       t = advance(t)
     return t
 
