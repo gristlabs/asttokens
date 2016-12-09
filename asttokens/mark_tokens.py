@@ -24,6 +24,19 @@ _matching_pairs = {
   (token.OP, '{'): (token.OP, '}'),
 }
 
+# TODO
+# 1. Refactor tests to move all tests named *mark_tokens testing to test_mark_tokens
+# 2. Combine First/Last assigners to add precisions with matching parens.
+
+class MarkTokens(object):
+  def __init__(self, code):
+    self.a = AssignFirstTokens(code)
+    self.b = AssignLastTokens(code)
+
+  def visit_tree(self, node):
+    self.a.visit_tree(node)
+    self.b.visit_tree(node)
+
 
 class AssignFirstTokens(object):
   """

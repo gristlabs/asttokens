@@ -19,7 +19,7 @@ import io
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token
-from .mark_tokens import AssignFirstTokens, AssignLastTokens
+from .mark_tokens import MarkTokens
 
 class ASTTokens(object):
   """
@@ -131,8 +131,8 @@ class ASTTokens(object):
     Given the root of the AST tree produced from source_text, visits all nodes marking them with
     token and position information by adding .first_token and .last_token attributes.
     """
-    AssignFirstTokens(self).visit_tree(root_node)
-    AssignLastTokens(self).visit_tree(root_node)
+    # The hard work of this class is done by MarkTokens
+    MarkTokens(self).visit_tree(root_node)
 
   def get_tokens(self, node, include_extra=False):
     """
