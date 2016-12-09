@@ -144,9 +144,8 @@ class AssignLastTokens(object):
 
   def handle_attr(self, node, last_child, last):
     # Attribute node has ".attr" (2 tokens) after the last child.
-    dot = self._code.next_token(last)
+    dot = self._code.find_token(last, token.OP, '.')
     name = self._code.next_token(dot)
-    util.expect_token(dot, token.OP, '.')
     util.expect_token(name, token.NAME)
     return name
 

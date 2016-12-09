@@ -94,7 +94,7 @@ b +     # line3
 
     all_nodes = {atok.get_text(node) for node in ast.walk(root)}
     self.assertEqual(all_nodes, {
-      None,           # nodes we don't care about
+      '',             # nodes we don't care about
       source,
       'a', 'b', 'c', 'd',
       # All other expressions preserve newlines and comments but are parenthesized.

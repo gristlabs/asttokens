@@ -141,17 +141,26 @@ class ASTTokens(object):
     """
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
-  def get_text(self, node):
+  def get_text_range(self, node):
     """
-    After mark_tokens() has been called, returns the text corresponding to the given node. Returns
-    None for nodes (like `Load`) that don't correspond to any particular text.
+    After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
+    corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
+    to any particular text.
     """
     if not hasattr(node, 'first_token'):
-      return None
+      return (0, 0)
 
     start = node.first_token.startpos
     if any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
       # Multi-line nodes would be invalid unless we keep the indentation of the first node.
       start = self._text.rfind('\n', 0, start) + 1
 
-    return self._text[start : node.last_token.endpos]
+    return (start, node.last_token.endpos)
+
+  def get_text(self, node):
+    """
+    After mark_tokens() has been called, returns the text corresponding to the given node. Returns
+    '' for nodes (like `Load`) that don't correspond to any particular text.
+    """
+    start, end = self.get_text_range(node)
+    return self._text[start : end]

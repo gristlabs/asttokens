@@ -1,16 +1,26 @@
 # -*- coding: UTF-8 -*-
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 import ast
+import astroid
 import asttokens
-import astor    # pylint: disable=import-error
-import token
+import copy
 import re
 import six
+import textwrap
+import token
 import unittest
 from .test_mark_tokens import read_fixture, collect_nodes_preorder
 
+def parse_expr(text):
+  return parse_stmt('(' + text + ')').value
 
-def parse_snippet(text):
+def parse_stmt(text):
+  return ast.parse(text, 'exec').body[0]
+
+def parse_indented(text):
+  return parse_stmt('def dummy():\n' + text).body[0]
+
+def parse_snippet(text, is_expr=False):
   """
   Returns the parsed AST tree for the given text, handling issues with indentation when text is
   really an extracted part of larger code.
@@ -20,43 +30,26 @@ def parse_snippet(text):
   # multiline strings).
   indented = re.match(r'^[ \t]+\S', text)
   if indented:
-    text = "def dummy():\n" + text
+    return parse_indented(text)
+  return parse_expr(text) if is_expr else parse_stmt(text)
 
-  try:
-    module = ast.parse(text, 'exec')
-  except SyntaxError as e:
-    try:
-      # If we can't parse it, maybe we can parse the parenthesized version. This will be the case
-      # when the text is an expression that contains newlines but is missing enclosing parens.
-      module = ast.parse('(' + text + ')', 'exec')
-    except:
-      raise e
-
-  body = module.body[0]
-  return body.body[0] if indented else body
 
 def to_source(node):
-  # We use astor to convert a node to source code (for verifying whether we got correct text
-  # corresponding to a node). Unfortunately, astor has a bug with Call/ClassDef nodes in
-  # python3.5+. We work around it here by adding missing starargs attributes to such nodes.
-  if hasattr(ast, 'Starred'):
-    for n in ast.walk(node):
-      if isinstance(n, (ast.Call, ast.ClassDef)) and not hasattr(n, 'starargs'):
-        # pylint: disable=no-member
-        plain_args = n.args if isinstance(n, ast.Call) else n.bases
-        n.starargs = next((arg.value for arg in plain_args if isinstance(arg, ast.Starred)), None)
-        n.args = [arg for arg in plain_args if not isinstance(arg, ast.Starred)]
-        n.kwargs = next((arg.value for arg in n.keywords if arg.arg is None), None)
-        n.keywords = [arg for arg in n.keywords if arg.arg is not None]
-  return astor.to_source(node)
+  """
+  Convert a node to source code by converting it to an astroid tree first, and using astroid's
+  as_string() method.
+  """
+  builder = astroid.rebuilder.TreeRebuilder(astroid.manager.AstroidManager())
+  if isinstance(node, ast.Module):
+    anode = builder.visit_module(node, '', '', '')
+  else:
+    # Anything besides Module needs to have astroid Module passed in as a parent.
+    amodule = astroid.nodes.Module('', None)
+    anode = builder.visit(copy.deepcopy(node), amodule)
+  return anode.as_string()
 
 
 class TestASTTokens(unittest.TestCase):
-
-  def test_astor_fix(self):
-    source = "foo(a, b, c=2, *d, **e)"
-    root = ast.parse(source)
-    self.assertEqual(to_source(root), source)
 
   def test_tokenizing(self):
     # Test that we produce meaningful tokens on initialization.
@@ -115,6 +108,17 @@ class TestASTTokens(unittest.TestCase):
                      atok.tokens[4:7])
 
 
+  def test_to_source(self):
+    # Verify that to_source() actually works, with a coulpe of cases that have caused hiccups.
+    source = "foo(a, b, *d, c=2, **e)"
+    root = ast.parse(source)
+    self.assertEqual(to_source(root.body[0]), source)
+
+    source = 'def foo():\n    """xxx"""\n    None'
+    root = ast.parse(source).body[0]
+    self.assertEqual(to_source(root).strip(), source)
+
+
   def test_mark_tokens(self):
     # There is a generic way to test it. We can take an arbitrary piece of code, parse it, and for
     # each AST node, extract the corresponding code test. For nodes that are statements or
@@ -141,22 +145,25 @@ class TestASTTokens(unittest.TestCase):
       atok = asttokens.ASTTokens(source)
       atok.mark_tokens(root)
 
-      self.verify_all_nodes(atok, root)
+      self.verify_all_nodes(atok, root, path + ": ")
 
 
-  def verify_all_nodes(self, atok, root):
+  def verify_all_nodes(self, atok, root, prefix=''):
+    # A generic way to test an atok.get_text() on the ast tree: for each statement and expression
+    # in the tree, we extract the text, parse it, and see if it produces an equivalent tree.
     for node in ast.walk(root):
       if not isinstance(node, (ast.stmt, ast.expr)):
         continue
       text = atok.get_text(node)
-      rebuilt_node = parse_snippet(text)
+      rebuilt_node = parse_snippet(text, is_expr=isinstance(node, ast.expr))
 
       # Now we need to check if the two nodes are equivalent.
       try:
         self.assertEqual(to_source(rebuilt_node), to_source(node))
       except AssertionError as e:
-        print("OUTPUT DIFFERS FOR:", text)
+        print("%sOUTPUT DIFFERS FOR: %s" % (prefix, text))
         raise
+
 
   def test_deep_recursion(self):
     # This testcase has 1050 strings joined with '+', which causes naive recursions to fail with
@@ -166,8 +173,8 @@ class TestASTTokens(unittest.TestCase):
     atok = asttokens.ASTTokens(source)
     atok.mark_tokens(root)
 
-    # We handle it find, but we can't use astor.to_source on it because astor chokes. So we check
-    # differently.
+    # We handle it find, but we can't use to_source() on it because it chokes on recursion depth.
+    # So we check differently.
     all_nodes = collect_nodes_preorder(root)
     self.assertEqual(len(all_nodes), 2104)
     self.assertEqual(atok.get_text(all_nodes[-1]),
@@ -186,6 +193,7 @@ class TestASTTokens(unittest.TestCase):
     binop = next(n for n in all_nodes if isinstance(n, ast.BinOp))
     self.assertTrue(atok.get_text(binop).startswith("'R0l"))
     self.assertTrue(atok.get_text(binop).endswith("AA7'"))
+
 
   def test_print_function(self):
     # This testcase imports print as function (using from __future__). Check that we can parse.
@@ -253,6 +261,68 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(atok.get_text(string_node), "'фыва'")
     self.assertEqual(atok.get_text(a_node), "a")
     self.assertEqual(atok.get_text(b_node), "b")
+
+
+  # To make sure we can handle various hard cases, we include tests for issues reported for a
+  # similar project here: https://bitbucket.org/plas/thonny
+
+  if six.PY3:
+    def test_nonascii(self):
+      # Test of https://bitbucket.org/plas/thonny/issues/162/weird-range-marker-crash-with-non-ascii
+      # Only on PY3 because Py2 doesn't support unicode identifiers.
+      for source in (
+        "sünnikuupäev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]",
+        "sünnikuupaev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]"):
+        atok = asttokens.ASTTokens(source)
+        root = ast.parse(source)
+        atok.mark_tokens(root)
+        self.verify_all_nodes(atok, root)
+        self.assertEqual(atok.get_text(next(n for n in ast.walk(root) if isinstance(n, ast.Name))),
+                         source[:12])
+
+
+  def test_splat(self):
+    # See https://bitbucket.org/plas/thonny/issues/151/debugger-crashes-when-encountering-a-splat
+    source = textwrap.dedent("""
+      arr = [1,2,3,4,5]
+      def print_all(a, b, c, d, e):
+          print(a, b, c, d ,e)
+      print_all(*arr)
+    """)
+    atok = asttokens.ASTTokens(source)
+    root = ast.parse(source)
+    atok.mark_tokens(root)
+    self.verify_all_nodes(atok, root)
+
+    names = [n for n in ast.walk(root) if isinstance(n, ast.Name)]
+    ranges = sorted((atok.get_text_range(n), n) for n in names)
+    end = len(source)
+    self.assertEqual(ranges[-2][0], (end - 16, end - 7))
+    self.assertEqual(ranges[-1][0], (end - 5, end - 2))
+    self.assertEqual(atok.get_text(ranges[-2][1]), 'print_all')
+    self.assertEqual(atok.get_text(ranges[-1][1]), 'arr')
+
+
+  def test_paren_attr(self):
+    # See https://bitbucket.org/plas/thonny/issues/123/attribute-access-on-parenthesized
+    source = "(x).foo()"
+    atok, root, nodes = astparse(source)
+    self.verify_all_nodes(atok, root)
+    names = [n for n in nodes if isinstance(n, ast.Name)]
+    self.assertEqual(range_text(atok, names[0]), (1, 2, "x"))
+    self.assertEqual(range_text(atok, names[1]), (1, 2, "foo"))
+
+
+def astparse(source):
+  atok = asttokens.ASTTokens(source)
+  root = ast.parse(source)
+  atok.mark_tokens(root)
+  nodes = sorted(ast.walk(root), key=lambda n: n.first_token.index)
+  return (atok, root, nodes)
+
+
+def range_text(atok, n):
+  return atok.get_text_range(n) + (atok.get_text(n),)
 
 
 if __name__ == "__main__":

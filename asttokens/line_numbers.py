@@ -30,7 +30,7 @@ class LineNumbers(object):
     self._line_offsets = [m.start(0) for m in _line_start_re.finditer(text)]
     self._text = text
     self._text_len = len(text)
-    self._utf8_offset_cache = {}    # maps line num to list of utf8 offsets for chars in that line
+    self._utf8_offset_cache = {}    # maps line num to list of char offset for each byte in line
 
   def from_utf8_col(self, line, utf8_column):
     """
@@ -41,16 +41,11 @@ class LineNumbers(object):
       end_offset = self._line_offsets[line] if line < len(self._line_offsets) else self._text_len
       line_text = self._text[self._line_offsets[line - 1] : end_offset]
 
-      offset = 0
-      offsets = [0]
-      for c in line_text:
-        offset += len(c.encode('utf8'))
-        offsets.append(offset)
-
+      offsets = [i for i,c in enumerate(line_text) for byte in c.encode('utf8')]
+      offsets.append(len(line_text))
       self._utf8_offset_cache[line] = offsets
 
-    char_column = bisect.bisect_right(offsets, utf8_column) - 1
-    return char_column
+    return offsets[max(0, min(len(offsets), utf8_column))]
 
   def line_to_offset(self, line, column):
     """
