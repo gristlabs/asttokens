@@ -13,15 +13,22 @@
 # limitations under the License.
 
 import ast
+import six
 import token
 from . import util
 
 
 # Mapping of matching braces. To find a token here, look up token[:2].
-_matching_pairs = {
+_matching_pairs_left = {
   (token.OP, '('): (token.OP, ')'),
   (token.OP, '['): (token.OP, ']'),
   (token.OP, '{'): (token.OP, '}'),
+}
+
+_matching_pairs_right = {
+  (token.OP, ')'): (token.OP, '('),
+  (token.OP, ']'): (token.OP, '['),
+  (token.OP, '}'): (token.OP, '{'),
 }
 
 # TODO
@@ -29,18 +36,9 @@ _matching_pairs = {
 # 2. Combine First/Last assigners to add precisions with matching parens.
 
 class MarkTokens(object):
-  def __init__(self, code):
-    self.a = AssignFirstTokens(code)
-    self.b = AssignLastTokens(code)
-
-  def visit_tree(self, node):
-    self.a.visit_tree(node)
-    self.b.visit_tree(node)
-
-
-class AssignFirstTokens(object):
   """
-  Helper that visits all nodes in the AST tree and assigns .first_token attribute to each.
+  Helper that visits all nodes in the AST tree and assigns .first_token and .last_token attributes
+  to each of them. This is the heart of the token-marking logic.
   """
   def __init__(self, code):
     self._code = code
@@ -57,76 +55,42 @@ class AssignFirstTokens(object):
     return (token or parent_token, token)
 
   def _visit_after_children(self, node, parent_token, token):
-    first_child = next(util.iter_children(node), None)
-    # If we don't have a token, or if a child starts earlier (indicating that our own position
-    # isn't really the start of the node), use the child's first token. If that's not available
-    # either, use the parent's.
-    if not token or (first_child and first_child.first_token.index < token.index):
-      token = first_child.first_token if first_child else parent_token
+    # This processes the node generically first, after all children have been processed.
 
-    # Use node-specific methods to adjust before actually setting it.
-    node.first_token = self._methods.get(self, node.__class__)(node, token)
-
-  def visit_default(self, node, first_token):
-    # pylint: disable=no-self-use
-    # By default, we don't need to adjust the token we computed earlier.
-    return first_token
-
-  def visit_listcomp(self, node, first_token):
-    # For list comprehensions, we only get the token of the first child, so adjust it to include
-    # the opening bracket.
-    before = self._code.prev_token(first_token)
-    util.expect_token(before, token.OP, '[')
-    return before
-
-  def visit_comprehension(self, node, first_token):
-    # The 'comprehension' node starts with 'for' but we only get first child; we search backwards
-    # to find the 'for' keyword.
-    return self._code.find_token(first_token, token.NAME, 'for', reverse=True)
-
-
-class AssignLastTokens(object):
-  """
-  Helper that visits all nodes in the AST tree and assigns .last_token to each.
-  """
-  def __init__(self, code):
-    self._code =code
-    self._methods = util.NodeMethods()
-
-  def visit_tree(self, node):
-    util.visit_tree(node, None, self._visit_after_children)
-
-  def _visit_after_children(self, node, par_value, value):
-    # Find the last child
-    child = None
+    # Get the first and last tokens that belong to children. Note how this doesn't assume that we
+    # iterate through children in order that corresponds to occurrence in source code. This
+    # assumption can fail (e.g. with return annotations).
+    first = token
+    last = None
     for child in util.iter_children(node):
-      pass
+      if not first or child.first_token.index < first.index:
+        first = child.first_token
+      if not last or child.last_token.index > last.index:
+        last = child.last_token
 
-    # Process the node generically first.
-    first = node.first_token
-    last = child.last_token if child else first
+    # If we don't have a first token from _visit_before_children, and there were no children, then
+    # use the parent's token as the first token.
+    first = first or parent_token
 
-    # We look for opening parens/braces among non-child tokens (i.e. those between our actual
-    # child nodes). If we find any closing ones, we match them to the opens.
-    tokens_to_match = []
-    for tok in self._iter_non_child_tokens(first, last, node):
-      tok_info = tok[:2]
-      if tokens_to_match and tok_info == tokens_to_match[-1]:
-        tokens_to_match.pop()
-      elif tok_info in _matching_pairs:
-        tokens_to_match.append(_matching_pairs[tok_info])
-
-    # Once done, extend `last` to match any unclosed parens/braces.
-    while tokens_to_match:
-      last = self._code.next_token(last)
-      util.expect_token(last, *tokens_to_match.pop())
+    # If no children, set last token to the first one.
+    last = last or first
 
     # Statements continue to before NEWLINE. This helps cover a few different cases at once.
     if isinstance(node, ast.stmt):
       last = self._find_last_in_line(last)
 
-    # Finally, give a chance to node-specific methods to adjust
-    node.last_token = self._methods.get(self, node.__class__)(node, child, last)
+    # Capture any unmatched brackets.
+    first, last = self._expand_to_matching_pairs(first, last, node)
+
+    # Give a chance to node-specific methods to adjust.
+    nfirst, nlast = self._methods.get(self, node.__class__)(node, first, last)
+
+    if (nfirst, nlast) != (first, last):
+      # If anything changed, expand again to capture any unmatched brackets.
+      nfirst, nlast = self._expand_to_matching_pairs(nfirst, nlast, node)
+
+    node.first_token = nfirst
+    node.last_token = nlast
 
   def _find_last_in_line(self, start_token):
     try:
@@ -151,43 +115,110 @@ class AssignLastTokens(object):
     for t in self._code.token_range(tok, last_token):
       yield t
 
-  def visit_default(self, node, last_child, last):
-    # pylint: disable=no-self-use
-    return last
+  def _expand_to_matching_pairs(self, first_token, last_token, node):
+    """
+    Scan tokens in [first_token, last_token] range that are between node's children, and for any
+    unmatched brackets, adjust first/last tokens to include the closing pair.
+    """
+    # We look for opening parens/braces among non-child tokens (i.e. tokens between our actual
+    # child nodes). If we find any closing ones, we match them to the opens.
+    to_match_right = []
+    to_match_left = []
+    for tok in self._iter_non_child_tokens(first_token, last_token, node):
+      tok_info = tok[:2]
+      if to_match_right and tok_info == to_match_right[-1]:
+        to_match_right.pop()
+      elif tok_info in _matching_pairs_left:
+        to_match_right.append(_matching_pairs_left[tok_info])
+      elif tok_info in _matching_pairs_right:
+        to_match_left.append(_matching_pairs_right[tok_info])
 
-  def handle_attr(self, node, last_child, last):
+    # Once done, extend `last_token` to match any unclosed parens/braces.
+    for match in reversed(to_match_right):
+      last_token = self._code.next_token(last_token)
+      util.expect_token(last_token, *match)
+
+    # And extend `first_token` to match any unclosed opening parens/braces.
+    for match in to_match_left:
+      first_token = self._code.prev_token(first_token)
+      util.expect_token(first_token, *match)
+
+    return (first_token, last_token)
+
+  #----------------------------------------------------------------------
+  # Node visitors. Each takes a preliminary first and last tokens, and returns the adjusted pair
+  # that will actually be assigned.
+
+  def visit_default(self, node, first_token, last_token):
+    # pylint: disable=no-self-use
+    # By default, we don't need to adjust the token we computed earlier.
+    return (first_token, last_token)
+
+  def handle_comp(self, open_brace, node, first_token, last_token):
+    # For list/set/dict comprehensions, we only get the token of the first child, so adjust it to
+    # include the opening brace (the closing brace will be matched automatically).
+    before = self._code.prev_token(first_token)
+    util.expect_token(before, token.OP, open_brace)
+    return (before, last_token)
+
+  def visit_listcomp(self, node, first_token, last_token):
+    return self.handle_comp('[', node, first_token, last_token)
+
+  if six.PY2:
+    # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
+    def visit_setcomp(self, node, first_token, last_token):
+      return self.handle_comp('{', node, first_token, last_token)
+
+    def visit_dictcomp(self, node, first_token, last_token):
+      return self.handle_comp('{', node, first_token, last_token)
+
+  def visit_comprehension(self, node, first_token, last_token):
+    # The 'comprehension' node starts with 'for' but we only get first child; we search backwards
+    # to find the 'for' keyword.
+    first = self._code.find_token(first_token, token.NAME, 'for', reverse=True)
+    return (first, last_token)
+
+  def handle_attr(self, node, first_token, last_token):
     # Attribute node has ".attr" (2 tokens) after the last child.
-    dot = self._code.find_token(last, token.OP, '.')
+    dot = self._code.find_token(last_token, token.OP, '.')
     name = self._code.next_token(dot)
     util.expect_token(name, token.NAME)
-    return name
+    return (first_token, name)
 
   visit_attribute = handle_attr
   visit_assignattr = handle_attr
   visit_delattr = handle_attr
 
-  def visit_call(self, node, last_child, last):
-    # A function call isn't over until we see a closing paren. Remember that last is at the end of
-    # all children, so we are not worried about encountering a paren that belongs to a child.
-    return self._code.find_token(last, token.OP, ')')
+  def visit_call(self, node, first_token, last_token):
+    # A function call isn't over until we see a closing paren. Remember that last_token is at the
+    # end of all children, so we are not worried about encountering a paren that belongs to a
+    # child.
+    return (first_token, self._code.find_token(last_token, token.OP, ')'))
 
-  def visit_subscript(self, node, last_child, last):
+  def visit_subscript(self, node, first_token, last_token):
     # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
-    return self._code.find_token(last, token.OP, ']')
+    return (first_token, self._code.find_token(last_token, token.OP, ']'))
 
-  def visit_tuple(self, node, last_child, last):
+  def visit_tuple(self, node, first_token, last_token):
     # A tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
     try:
-      maybe_comma = self._code.next_token(last)
+      maybe_comma = self._code.next_token(last_token)
       if util.match_token(maybe_comma, token.OP, ','):
-        last = maybe_comma
+        last_token = maybe_comma
     except IndexError:
       pass
-    return last
+    return (first_token, last_token)
 
-  def visit_num(self, node, last_child, last):
+  def visit_num(self, node, first_token, last_token):
     # A constant like '-1' gets turned into two tokens; this will skip the '-'.
-    while util.match_token(last, token.OP):
-      last = self._code.next_token(last)
-    return last
+    while util.match_token(last_token, token.OP):
+      last_token = self._code.next_token(last_token)
+    return (first_token, last_token)
 
+  def visit_keyword(self, node, first_token, last_token):
+    if node.arg is not None:
+      equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
+      name = self._code.prev_token(equals)
+      util.expect_token(name, token.NAME, node.arg)
+      first_token = name
+    return (first_token, last_token)

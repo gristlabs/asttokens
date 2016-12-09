@@ -1,7 +1,6 @@
 # -*- coding: UTF-8 -*-
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 import ast
-import asttokens
 import six
 import textwrap
 import unittest
@@ -32,8 +31,9 @@ class TestMarkTokens(unittest.TestCase):
 
     # Line 59 is: [indent 12] global_access(local, val=autre)
     self.assertEqual(m.view_node_types_at(59, 12), {'Name', 'Call', 'Expr'})
-    self.assertEqual(m.view_node_types_at(59, 26), {'Name'})
-    self.assertEqual(m.view_node_types_at(59, 37), {'Name', 'keyword'})
+    self.assertEqual(m.view_nodes_at(59, 26), {'Name:local'})
+    self.assertEqual(m.view_nodes_at(59, 33), {'keyword:val=autre'})
+    self.assertEqual(m.view_nodes_at(59, 37), {'Name:autre'})
 
   def test_mark_tokens_multiline(self):
     source = (
@@ -122,7 +122,7 @@ b +     # line3
                      { "Call:print(v.get('yo'))", "Expr:print(v.get('yo'))", "Name:print" })
     self.assertEqual(m.view_nodes_at(16, 14), {"Call:v.get('yo')", "Attribute:v.get", "Name:v"})
 
-    if six.PY3:
+    if not six.PY2:
       # This verification fails on Py2 because to_string() doesn't know to put parens around the
       # print function. So on Py2 we just rely on the checks above to know that it works.
       m.verify_all_nodes(self)
@@ -131,7 +131,7 @@ b +     # line3
   # To make sure we can handle various hard cases, we include tests for issues reported for a
   # similar project here: https://bitbucket.org/plas/thonny
 
-  if six.PY3:
+  if not six.PY2:
     def test_nonascii(self):
       # Test of https://bitbucket.org/plas/thonny/issues/162/weird-range-marker-crash-with-non-ascii
       # Only on PY3 because Py2 doesn't support unicode identifiers.
@@ -168,6 +168,105 @@ b +     # line3
     m = tools.MarkChecker(source)
     m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(1, 1), {"Name:x"})
-    self.assertEqual(m.view_nodes_at(1, 4), {"Name:foo", "Call:foo()"})
     self.assertEqual(m.view_nodes_at(1, 0),
-                     {"Module:(x).foo()", "Expr:(x).foo()", "Attribute:(x).foo"})
+                     {"Module:(x).foo()", "Expr:(x).foo()", "Call:(x).foo()", "Attribute:(x).foo"})
+
+  def test_conditional_expr(self):
+    # See https://bitbucket.org/plas/thonny/issues/108/ast-marker-crashes-with-conditional
+    source = "a = True if True else False\nprint(a)"
+    m = tools.MarkChecker(source)
+    m.verify_all_nodes(self)
+    if six.PY2:
+      self.assertEqual(m.view_nodes_at(1, 0),
+                       {"Name:a", "Assign:a = True if True else False", "Module:" + source})
+      self.assertEqual(m.view_nodes_at(1, 4),
+                       {'Name:True', 'IfExp:True if True else False'})
+      self.assertEqual(m.view_nodes_at(2, 0), {"Print:print(a)"})
+    else:
+      self.assertEqual(m.view_nodes_at(1, 0),
+                       {"Name:a", "Assign:a = True if True else False", "Module:" + source})
+      self.assertEqual(m.view_nodes_at(1, 4),
+                       {'NameConstant:True', 'IfExp:True if True else False'})
+      self.assertEqual(m.view_nodes_at(2, 0), {"Name:print", "Call:print(a)", "Expr:print(a)"})
+
+  def test_calling_lambdas(self):
+    # See https://bitbucket.org/plas/thonny/issues/96/calling-lambdas-crash-the-debugger
+    source = "y = (lambda x: x + 1)(2)"
+    m = tools.MarkChecker(source)
+    m.verify_all_nodes(self)
+    self.assertEqual(m.view_nodes_at(1, 4), {'Call:(lambda x: x + 1)(2)'})
+    self.assertEqual(m.view_nodes_at(1, 15), {'BinOp:x + 1', 'Name:x'})
+    self.assertEqual(m.view_nodes_at(1, 0), {'Name:y', 'Assign:' + source, 'Module:' + source})
+
+  def test_comprehensions(self):
+    # See https://bitbucket.org/plas/thonny/issues/8/range-marker-doesnt-work-correctly-with
+    for source in (
+      "[(key, val) for key, val in ast.iter_fields(node)]",
+      "((key, val) for key, val in ast.iter_fields(node))",
+      "{(key, val) for key, val in ast.iter_fields(node)}",
+      "{key: val for key, val in ast.iter_fields(node)}",
+      "[[c for c in key] for key, val in ast.iter_fields(node)]"):
+      m = tools.MarkChecker(source)
+      m.verify_all_nodes(self)
+
+  def test_del_dict(self):
+    # See https://bitbucket.org/plas/thonny/issues/24/try-del-from-dictionary-in-debugging-mode
+    source = "x = {4:5}\ndel x[4]"
+    m = tools.MarkChecker(source)
+    m.verify_all_nodes(self)
+    self.assertEqual(m.view_nodes_at(1, 4), {'Dict:{4:5}'})
+    self.assertEqual(m.view_nodes_at(1, 5), {'Num:4'})
+    self.assertEqual(m.view_nodes_at(2, 0), {'Delete:del x[4]'})
+    self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
+
+  if not six.PY2:
+    def test_return_annotation(self):
+      # See https://bitbucket.org/plas/thonny/issues/9/range-marker-crashes-on-function-return
+      source = textwrap.dedent("""
+        def liida_arvud(x: int, y: int) -> int:
+          return x + y
+      """)
+      m = tools.MarkChecker(source)
+      m.verify_all_nodes(self)
+      self.assertEqual(m.view_nodes_at(2, 0), {
+        'Module:def liida_arvud(x: int, y: int) -> int:\n  return x + y',
+        'FunctionDef:def liida_arvud(x: int, y: int) -> int:\n  return x + y'
+      })
+      self.assertEqual(m.view_nodes_at(2, 16),   {'arguments:x: int, y: int', 'arg:x: int'})
+      self.assertEqual(m.view_nodes_at(2, 19),   {'Name:int'})
+      self.assertEqual(m.view_nodes_at(2, 35),   {'Name:int'})
+      self.assertEqual(m.view_nodes_at(3, 2),    {'Return:return x + y'})
+
+  def test_keyword_arg_only(self):
+    # See https://bitbucket.org/plas/thonny/issues/52/range-marker-fails-with-ridastrip-split
+    source = "f(x=1)\ng(a=(x),b=[y])"
+    m = tools.MarkChecker(source)
+    m.verify_all_nodes(self)
+    self.assertEqual(m.view_nodes_at(1, 0),
+                     {'Name:f', 'Call:f(x=1)', 'Expr:f(x=1)', 'Module:' + source})
+    self.assertEqual(m.view_nodes_at(1, 2), {'keyword:x=1'})
+    self.assertEqual(m.view_nodes_at(1, 4), {'Num:1'})
+    self.assertEqual(m.view_nodes_at(2, 0),
+                     {'Name:g', 'Call:g(a=(x),b=[y])', 'Expr:g(a=(x),b=[y])'})
+    self.assertEqual(m.view_nodes_at(2, 2), {'keyword:a=(x)'})
+    self.assertEqual(m.view_nodes_at(2, 8), {'keyword:b=[y]'})
+    self.assertEqual(m.view_nodes_at(2, 11), {'Name:y'})
+
+  def test_decorators(self):
+    # See https://bitbucket.org/plas/thonny/issues/49/range-marker-fails-with-decorators
+    source = textwrap.dedent("""
+      @deco1
+      def f():
+        pass
+      @deco2(a=1)
+      def g(x):
+        pass
+    """)
+    m = tools.MarkChecker(source)
+    m.verify_all_nodes(self)
+    # The `arguments` node has bogus positions here (and whenever there are no arguments). We
+    # don't let that break our test because it's unclear if it matters to anything anyway.
+    self.assertIn('FunctionDef:@deco1\ndef f():\n  pass', m.view_nodes_at(2, 0))
+    self.assertEqual(m.view_nodes_at(2, 1), {'Name:deco1'})
+    self.assertEqual(m.view_nodes_at(5, 0), {'FunctionDef:@deco2(a=1)\ndef g(x):\n  pass'})
+    self.assertEqual(m.view_nodes_at(5, 1), {'Name:deco2', 'Call:deco2(a=1)'})
