@@ -46,7 +46,7 @@ b +     # line3
     m = tools.MarkChecker(source)
 
     self.assertIn('Name:a', m.view_nodes_at(2, 0))
-    self.assertEquals(m.view_nodes_at(3, 0),  {
+    self.assertEqual(m.view_nodes_at(3, 0),  {
       'Name:b',
       'BinOp:b +     # line3\n  c',
       'BinOp:b +     # line3\n  c +   # line4\n  d',

@@ -12,7 +12,7 @@ from os import path
 here = path.dirname(__file__)
 
 # Get the long description from the README file
-with io.open(path.join(here, 'README.md'), encoding='utf-8') as f:
+with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
   long_description = f.read()
 
 setup(
@@ -54,7 +54,7 @@ setup(
     'Programming Language :: Python :: 2',
     'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.5'
+    'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: Implementation :: CPython',
   ],
 
@@ -78,4 +78,5 @@ setup(
   extras_require={
     'test': ['astroid', 'nose', 'coverage'],
   },
+  test_suite="nose.collector",
 )
