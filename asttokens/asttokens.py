@@ -16,6 +16,7 @@ import bisect
 import token
 import tokenize
 import io
+import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token
@@ -28,8 +29,11 @@ class ASTTokens(object):
   """
   def __init__(self, source_text):
     """
-    Initialize with the given source code, which should be provided as unicode, and tokenize it.
+    Initialize with the given source code, which should be provided as unicode or a UTF8-encoded
+    string, and tokenize it.
     """
+    if isinstance(source_text, six.binary_type):
+      source_text = source_text.decode('utf8')
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
 
