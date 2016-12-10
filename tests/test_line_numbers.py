@@ -1,7 +1,7 @@
 # -*- coding: UTF-8 -*-
 from __future__ import unicode_literals
-import asttokens
 import unittest
+from .context import asttokens
 
 class TestLineNumbers(unittest.TestCase):
 
