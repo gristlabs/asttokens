@@ -1,2 +1,8 @@
 .coverage
 *.pyc
+
+# Building and packaging
+build/
+dist/
+*.egg-info/
+docs/_build/

@@ -27,14 +27,15 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
   """
   TokenInfo is an 8-tuple containing the same 5 fields as the tokens produced by the tokenize
   module, and 3 additional ones useful for this module:
-    [0] .type     Token type (see token.py)
-    [1] .string   Token (a string)
-    [2] .start    Starting (row, column) indices of the token (a 2-tuple of ints)
-    [3] .end      Ending (row, column) indices of the token (a 2-tuple of ints)
-    [4] .line     Original line (string)
-    [5] .index    Index of the token in the list of tokens that it belongs to.
-    [6] .startpos Starting character offset into the input text.
-    [7] .endpos   Ending character offset into the input text.
+
+  - [0] .type     Token type (see token.py)
+  - [1] .string   Token (a string)
+  - [2] .start    Starting (row, column) indices of the token (a 2-tuple of ints)
+  - [3] .end      Ending (row, column) indices of the token (a 2-tuple of ints)
+  - [4] .line     Original line (string)
+  - [5] .index    Index of the token in the list of tokens that it belongs to.
+  - [6] .startpos Starting character offset into the input text.
+  - [7] .endpos   Ending character offset into the input text.
   """
   def __str__(self):
     return token_repr(self.type, self.string)
@@ -74,16 +75,17 @@ def visit_tree(node, previsit, postvisit):
   Scans the tree under the node depth-first using an explicit stack. It avoids implicit recursion
   via the function call stack to avoid hitting 'maximum recursion depth exceeded' error.
 
-  It calls previsit() and postvisit() as follows:
+  It calls ``previsit()`` and ``postvisit()`` as follows:
 
-  * previsit(node, par_value)
-        par_value is as returned from previsit() of the parent. Should return (par_value, value).
-  * postvisit(node, par_value, value)
-        par_value is as returned from previsit() of the parent, and value is as returned from
-        previsit() of this node itself. The return value is ignored except the one for the root
-        node, which is returned from the overall visit_tree() call.
+  * ``previsit(node, par_value)`` - should return ``(par_value, value)``
+        ``par_value`` is as returned from ``previsit()`` of the parent.
 
-  For the initial node, par_value is None. Either previsit and postvisit may be None.
+  * ``postvisit(node, par_value, value)`` - should return ``value``
+        ``par_value`` is as returned from ``previsit()`` of the parent, and ``value`` is as
+        returned from ``previsit()`` of this node itself. The return ``value`` is ignored except
+        the one for the root node, which is returned from the overall ``visit_tree()`` call.
+
+  For the initial node, ``par_value`` is None. Either ``previsit`` and ``postvisit`` may be None.
   """
   if not previsit:
     previsit = lambda node, pvalue: (None, None)

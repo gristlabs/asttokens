@@ -16,8 +16,6 @@
 This module enhances the Python AST tree with token and source code information, sufficent to
 detect the source text of each AST node. This is helpful for tools that make source code
 transformations.
-
-See README.rst for overview and examples.
 """
 
 from .line_numbers import LineNumbers

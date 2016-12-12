@@ -39,7 +39,7 @@ the ``ASTTokens`` object offers helpful methods:
 
 Which produces this output:
 
-.. code-block::
+.. code-block:: text
 
     Robot('blue').walk
     Robot('blue').RUN(steps=10*n)
