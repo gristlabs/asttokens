@@ -1,6 +1,15 @@
 ASTTokens
 =========
 
+.. image:: https://img.shields.io/pypi/v/asttokens.svg
+    :target: https://pypi.org/project/asttokens/
+.. image:: https://img.shields.io/pypi/pyversions/asttokens.svg
+    :target: https://pypi.org/project/asttokens/
+.. image:: https://travis-ci.org/gristlabs/asttokens.svg?branch=master
+    :target: https://travis-ci.org/gristlabs/asttokens
+
+.. Start of user-guide
+
 The ``asttokens`` module annotates Python abstract syntax trees (ASTs) with the positions of tokens
 and text in the source code that generated them.
 

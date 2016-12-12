@@ -2,4 +2,4 @@ User Guide
 ==========
 
 .. include:: ../README.rst
-  :start-line: 3
+  :start-after: Start of user-guide

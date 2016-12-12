@@ -1,0 +1,4 @@
+astroid
+coverage
+nose
+six
