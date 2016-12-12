@@ -7,6 +7,8 @@ ASTTokens
     :target: https://pypi.python.org/project/asttokens/
 .. image:: https://travis-ci.org/gristlabs/asttokens.svg?branch=master
     :target: https://travis-ci.org/gristlabs/asttokens
+.. image:: http://asttokens.readthedocs.io/en/latest/?badge=latest
+    :target: http://asttokens.readthedocs.io/en/latest/index.html
 
 .. Start of user-guide
 
