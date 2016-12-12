@@ -2,9 +2,9 @@ ASTTokens
 =========
 
 .. image:: https://img.shields.io/pypi/v/asttokens.svg
-    :target: https://pypi.org/project/asttokens/
+    :target: https://pypi.python.org/project/asttokens/
 .. image:: https://img.shields.io/pypi/pyversions/asttokens.svg
-    :target: https://pypi.org/project/asttokens/
+    :target: https://pypi.python.org/project/asttokens/
 .. image:: https://travis-ci.org/gristlabs/asttokens.svg?branch=master
     :target: https://travis-ci.org/gristlabs/asttokens
 
@@ -22,7 +22,9 @@ asttokens is available on PyPI: https://pypi.python.org/pypi/asttokens/::
 
     pip install asttokens
 
-The code is available on GitHub: https://github.com/gristlabs/asttokens.
+The code is on GitHub: https://github.com/gristlabs/asttokens.
+
+The API Reference is here: http://asttokens.readthedocs.io/en/latest/api-index.html.
 
 Usage
 -----
@@ -32,16 +34,14 @@ Usage
 
     import asttokens, ast
     source = "Robot('blue').walk(steps=10*n)"
-    atok = asttokens.ASTTokens(source)
-    tree = ast.parse(source)
-    atok.mark_tokens(tree)
+    atok = asttokens.ASTTokens(source, parse=True)
 
 Once the tree has been marked, nodes get ``.first_token``, ``.last_token`` attributes, and
 the ``ASTTokens`` object offers helpful methods:
 
 .. code-block:: python
 
-    attr_node = next(n for n in ast.walk(tree) if isinstance(n, ast.Attribute), None)
+    attr_node = next(n for n in ast.walk(atok.tree) if isinstance(n, ast.Attribute))
     print(atok.get_text(attr_node))
     start, end = attr_node.last_token.startpos, attr_node.last_token.endpos
     print(atok.text[:start] + 'RUN' + atok.text[end:])

@@ -67,12 +67,6 @@ def collect_nodes_preorder(root):
   asttokens.util.visit_tree(root, append, None)
   return nodes
 
-def parse_and_mark(source):
-  """Returns (atok, root) pair of ASTTokens() with tokens marked, and corresponding AST root."""
-  atok = asttokens.ASTTokens(source)
-  root = ast.parse(source)
-  atok.mark_tokens(root)
-  return (atok, root)
 
 class MarkChecker(object):
   """
@@ -80,8 +74,8 @@ class MarkChecker(object):
   """
   def __init__(self, source):
     self.source = source
-    self.atok, self.root = parse_and_mark(source)
-    self.all_nodes = collect_nodes_preorder(self.root)
+    self.atok = asttokens.ASTTokens(source, parse=True)
+    self.all_nodes = collect_nodes_preorder(self.atok.tree)
 
   def get_nodes_at(self, line, col):
     """Returns all nodes that start with the token at the given position."""

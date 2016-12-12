@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
 import bisect
 import token
 import tokenize
@@ -26,14 +27,25 @@ class ASTTokens(object):
   """
   ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
   as tokens, and is used to mark and access token and position information.
+
+  ``source_text`` must be a unicode or UTF8-encoded string. If you pass in UTF8 bytes, remember
+  that all offsets you'll get are to the unicode text, which is available as the ``.text``
+  property.
+
+  If ``parse`` is set, the ``source_text`` will be parsed with ``ast.parse()``, and the resulting
+  tree marked with token info and made available as the ``.tree`` property.
+
+  If ``tree`` is given, it will be marked and made available as the ``.tree`` property.
+
+  If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
+  tree created separately.
   """
-  def __init__(self, source_text):
-    """
-    Initialize with the given source code, which should be provided as unicode or a UTF8-encoded
-    string, and tokenize it.
-    """
+  def __init__(self, source_text, parse=False, tree=None):
     if isinstance(source_text, six.binary_type):
       source_text = source_text.decode('utf8')
+
+    self._tree = ast.parse(source_text) if parse else tree
+
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
 
@@ -42,6 +54,21 @@ class ASTTokens(object):
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
     self._token_offsets = [tok.startpos for tok in self._tokens]
+
+    if self._tree:
+      self.mark_tokens(self._tree)
+
+
+  def mark_tokens(self, root_node):
+    """
+    Given the root of the AST tree produced from source_text, visits all nodes marking them with
+    token and position information by adding ``.first_token`` and ``.last_token``attributes. This
+    is done automatically in the constructor when ``parse`` or ``tree`` arguments are set, but may
+    be used manually with a separate AST tree.
+    """
+    # The hard work of this class is done by MarkTokens
+    MarkTokens(self).visit_tree(root_node)
+
 
   def _generate_tokens(self, text):
     """
@@ -64,6 +91,11 @@ class ASTTokens(object):
   def tokens(self):
     """The list of tokens corresponding to the source code from the constructor."""
     return self._tokens
+
+  @property
+  def tree(self):
+    """The root of the AST tree passed into the constructor or parsed from the source code."""
+    return self._tree
 
   def get_token_from_offset(self, offset):
     """
@@ -129,14 +161,6 @@ class ASTTokens(object):
     for i in xrange(first_token.index, last_token.index + 1):
       if include_extra or self._tokens[i].type < token.N_TOKENS:
         yield self._tokens[i]
-
-  def mark_tokens(self, root_node):
-    """
-    Given the root of the AST tree produced from source_text, visits all nodes marking them with
-    token and position information by adding .first_token and .last_token attributes.
-    """
-    # The hard work of this class is done by MarkTokens
-    MarkTokens(self).visit_tree(root_node)
 
   def get_tokens(self, node, include_extra=False):
     """
