@@ -2,9 +2,9 @@ ASTTokens
 =========
 
 .. image:: https://img.shields.io/pypi/v/asttokens.svg
-    :target: https://pypi.python.org/project/asttokens/
+    :target: https://pypi.python.org/pypi/asttokens/
 .. image:: https://img.shields.io/pypi/pyversions/asttokens.svg
-    :target: https://pypi.python.org/project/asttokens/
+    :target: https://pypi.python.org/pypi/asttokens/
 .. image:: https://travis-ci.org/gristlabs/asttokens.svg?branch=master
     :target: https://travis-ci.org/gristlabs/asttokens
 .. image:: https://readthedocs.org/projects/asttokens/badge/?version=latest
