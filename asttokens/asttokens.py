@@ -35,7 +35,9 @@ class ASTTokens(object):
   If ``parse`` is set, the ``source_text`` will be parsed with ``ast.parse()``, and the resulting
   tree marked with token info and made available as the ``.tree`` property.
 
-  If ``tree`` is given, it will be marked and made available as the ``.tree`` property.
+  If ``tree`` is given, it will be marked and made available as the ``.tree`` property. In
+  addition to the trees produced by the ``ast`` module, ASTTokens will also mark trees produced
+  using ``astroid`` library <https://www.astroid.org/>.
 
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
@@ -61,10 +63,10 @@ class ASTTokens(object):
 
   def mark_tokens(self, root_node):
     """
-    Given the root of the AST tree produced from source_text, visits all nodes marking them with
-    token and position information by adding ``.first_token`` and ``.last_token``attributes. This
-    is done automatically in the constructor when ``parse`` or ``tree`` arguments are set, but may
-    be used manually with a separate AST tree.
+    Given the root of the AST or Astroid tree produced from source_text, visits all nodes marking
+    them with token and position information by adding ``.first_token`` and
+    ``.last_token``attributes. This is done automatically in the constructor when ``parse`` or
+    ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
     """
     # The hard work of this class is done by MarkTokens
     MarkTokens(self).visit_tree(root_node)

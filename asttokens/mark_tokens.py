@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
 import six
 import token
 from . import util
@@ -50,6 +49,11 @@ class MarkTokens(object):
   def _visit_before_children(self, node, parent_token):
     col = getattr(node, 'col_offset', None)
     token = self._code.get_token_from_utf8(node.lineno, col) if col is not None else None
+
+    if not token and util.is_module(node):
+      # We'll assume that a Module node starts at the start of the source code.
+      token = self._code.get_token(1, 0)
+
     # Use our own token, or our parent's if we don't have one, to pass to child calls as
     # parent_token argument. The second value becomes the token argument of _visit_after_children.
     return (token or parent_token, token)
@@ -76,7 +80,7 @@ class MarkTokens(object):
     last = last or first
 
     # Statements continue to before NEWLINE. This helps cover a few different cases at once.
-    if isinstance(node, ast.stmt):
+    if util.is_stmt(node):
       last = self._find_last_in_line(last)
 
     # Capture any unmatched brackets.
@@ -189,6 +193,16 @@ class MarkTokens(object):
   visit_assignattr = handle_attr
   visit_delattr = handle_attr
 
+  def handle_doc(self, node, first_token, last_token):
+    # With astroid, nodes that start with a doc-string can have an empty body, in which case we
+    # need to adjust the last token to include the doc string.
+    if not node.body and getattr(node, 'doc', None):
+      last_token = self._code.find_token(last_token, token.STRING)
+    return (first_token, last_token)
+
+  visit_classdef = handle_doc
+  visit_funcdef = handle_doc
+
   def visit_call(self, node, first_token, last_token):
     # A function call isn't over until we see a closing paren. Remember that last_token is at the
     # end of all children, so we are not worried about encountering a paren that belongs to a
@@ -215,10 +229,28 @@ class MarkTokens(object):
       last_token = self._code.next_token(last_token)
     return (first_token, last_token)
 
+  # In Astroid, the Num node is replaced by Const.
+  visit_const = visit_num
+
   def visit_keyword(self, node, first_token, last_token):
     if node.arg is not None:
       equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
       name = self._code.prev_token(equals)
       util.expect_token(name, token.NAME, node.arg)
       first_token = name
+    return (first_token, last_token)
+
+  def visit_starred(self, node, first_token, last_token):
+    # Astroid has 'Starred' nodes (for "foo(*bar)" type args), but they need to be adjusted.
+    if not util.match_token(first_token, token.OP, '*'):
+      star = self._code.prev_token(first_token)
+      if util.match_token(star, token.OP, '*'):
+        first_token = star
+    return (first_token, last_token)
+
+  def visit_assignname(self, node, first_token, last_token):
+    # Astroid may turn 'except' clause into AssignName, but we need to adjust it.
+    if util.match_token(first_token, token.NAME, 'except'):
+      colon = self._code.find_token(last_token, token.OP, ':')
+      first_token = last_token = self._code.prev_token(colon)
     return (first_token, last_token)

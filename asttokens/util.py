@@ -15,6 +15,7 @@
 import ast
 import collections
 import token
+from six import iteritems
 
 
 def token_repr(tok_type, string):
@@ -61,10 +62,36 @@ def iter_children(node):
   """
   Yields all direct children of a AST node, skipping children that are singleton nodes.
   """
+  if hasattr(node, 'get_children'):
+    for c in node.get_children():
+      yield c
+    return
+
   for child in ast.iter_child_nodes(node):
     # Skip singleton children; they don't reflect particular positions in the code.
     if not isinstance(child, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop)):
       yield child
+
+
+stmt_class_names = {n for n, c in iteritems(ast.__dict__)
+                    if isinstance(c, type) and issubclass(c, ast.stmt)}
+expr_class_names = ({n for n, c in iteritems(ast.__dict__)
+                    if isinstance(c, type) and issubclass(c, ast.expr)} |
+                    {'AssignName', 'DelName', 'Const', 'AssignAttr', 'DelAttr'})
+
+# These feel hacky compared to isinstance() but allow us to work with both ast and astroid nodes
+# in the same way, and without even importing astroid.
+def is_expr(node):
+  """Returns whether node is an expression node."""
+  return node.__class__.__name__ in expr_class_names
+
+def is_stmt(node):
+  """Returns whether node is a statement node."""
+  return node.__class__.__name__ in stmt_class_names
+
+def is_module(node):
+  """Returns whether node is a module node."""
+  return node.__class__.__name__ == 'Module'
 
 
 # Sentinel value used by visit_tree().

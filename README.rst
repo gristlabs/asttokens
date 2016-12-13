@@ -30,7 +30,9 @@ The API Reference is here: http://asttokens.readthedocs.io/en/latest/api-index.h
 
 Usage
 -----
-``asttokens`` work with both Python2 and Python3. Here's an example:
+``asttokens`` work with both Python2 and Python3, and with trees produced by
+either the built-in `ast <https://docs.python.org/2/library/ast.html>`_ module
+or by the `astroid <https://www.astroid.org/>`_ library. Here's an example:
 
 .. code-block:: python
 
