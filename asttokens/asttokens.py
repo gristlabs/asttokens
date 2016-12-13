@@ -37,7 +37,7 @@ class ASTTokens(object):
 
   If ``tree`` is given, it will be marked and made available as the ``.tree`` property. In
   addition to the trees produced by the ``ast`` module, ASTTokens will also mark trees produced
-  using ``astroid`` library <https://www.astroid.org/>.
+  using ``astroid`` library <https://www.astroid.org>.
 
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
