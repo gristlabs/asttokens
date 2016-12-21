@@ -40,8 +40,10 @@ class MarkTokens(object):
   def __init__(self, code):
     self._code = code
     self._methods = util.NodeMethods()
+    self._iter_children = None
 
   def visit_tree(self, node):
+    self._iter_children = util.iter_children_func(node)
     util.visit_tree(node, self._visit_before_children, self._visit_after_children)
 
   def _visit_before_children(self, node, parent_token):
@@ -64,7 +66,7 @@ class MarkTokens(object):
     # assumption can fail (e.g. with return annotations).
     first = token
     last = None
-    for child in util.iter_children(node):
+    for child in self._iter_children(node):
       if not first or child.first_token.index < first.index:
         first = child.first_token
       if not last or child.last_token.index > last.index:
@@ -107,7 +109,7 @@ class MarkTokens(object):
     node. E.g. `foo(bar)` has children `foo` and `bar`, but we would yield the `(`.
     """
     tok = first_token
-    for n in util.iter_children(node):
+    for n in self._iter_children(node):
       for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
         yield t
       if n.last_token.index >= last_token.index:
