@@ -18,6 +18,28 @@ class TestMarkTokens(unittest.TestCase):
   def create_mark_checker(cls, source):
     return tools.MarkChecker(source, parse=True)
 
+
+  def print_timing(self):
+    # Print the timing of mark_tokens(). This doesn't normally run as a unittest, but if you'd like
+    # to see timings, e.g. while optimizing the implementation, run this to see them:
+    #
+    #     nosetests -m print_timing -s tests.test_mark_tokens tests.test_astroid
+    #
+    # pylint: disable=no-self-use
+    import timeit
+    print("mark_tokens", sorted(timeit.repeat(
+      setup=textwrap.dedent(
+        '''
+        import ast, asttokens
+        source = "foo(bar(1 + 2), 'hello' + ', ' + 'world')"
+        atok = asttokens.ASTTokens(source)
+        tree = ast.parse(source)
+        '''),
+      stmt='atok.mark_tokens(tree)',
+      repeat=3,
+      number=1000)))
+
+
   def test_mark_tokens_simple(self):
     source = tools.read_fixture('astroid', 'module.py')
     m = self.create_mark_checker(source)
@@ -167,6 +189,22 @@ b +     # line3
     self.assertTrue(m.atok.get_text(assign).startswith("x = ("))
     self.assertTrue(m.atok.get_text(assign).endswith(")"))
 
+  def test_slices(self):
+    # Make sure we don't fail on parsing slices of the form `foo[4:]`.
+    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::, :])"
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_nodes_at(1, 1),
+                     { "Attribute:foo.Area_Code", "Name:foo", "Tuple:"+source[1:-1] })
+    self.assertEqual(m.view_nodes_at(1, 16),
+                     { "Subscript:str(foo.Phone)[:3]", "Call:str(foo.Phone)", "Name:str"})
+    self.assertEqual(m.view_nodes_at(1, 36),
+                     { "Subscript:str(foo.Phone)[3:]", "Call:str(foo.Phone)", "Name:str"})
+    # Slice and ExtSlice nodes are wrong, and in particular placed with parents. They are not very
+    # important, so we skip them here.
+    self.assertEqual({n for n in m.view_nodes_at(1, 56) if 'Slice:' not in n},
+                     { "Subscript:foo[:]", "Name:foo" })
+    self.assertEqual({n for n in m.view_nodes_at(1, 64) if 'Slice:' not in n},
+                     { "Subscript:bar[::, :]", "Name:bar" })
 
   def test_print_function(self):
     # This testcase imports print as function (using from __future__). Check that we can parse it.

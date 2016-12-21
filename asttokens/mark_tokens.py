@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+import numbers
 import token
 from . import util
 
@@ -30,9 +31,6 @@ _matching_pairs_right = {
   (token.OP, '}'): (token.OP, '{'),
 }
 
-# TODO
-# 1. Refactor tests to move all tests named *mark_tokens testing to test_mark_tokens
-# 2. Combine First/Last assigners to add precisions with matching parens.
 
 class MarkTokens(object):
   """
@@ -139,13 +137,15 @@ class MarkTokens(object):
 
     # Once done, extend `last_token` to match any unclosed parens/braces.
     for match in reversed(to_match_right):
-      last_token = self._code.next_token(last_token)
-      util.expect_token(last_token, *match)
+      last = self._code.next_token(last_token)
+      if util.match_token(last, *match):
+        last_token = last
 
     # And extend `first_token` to match any unclosed opening parens/braces.
     for match in to_match_left:
-      first_token = self._code.prev_token(first_token)
-      util.expect_token(first_token, *match)
+      first = self._code.prev_token(first_token)
+      if util.match_token(first, *match):
+        first_token = first
 
     return (first_token, last_token)
 
@@ -230,7 +230,12 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   # In Astroid, the Num node is replaced by Const.
-  visit_const = visit_num
+  def visit_const(self, node, first_token, last_token):
+    # A constant like '-1' gets turned into two tokens; this will skip the '-'.
+    if isinstance(node.value, numbers.Number):
+      while util.match_token(last_token, token.OP):
+        last_token = self._code.next_token(last_token)
+    return (first_token, last_token)
 
   def visit_keyword(self, node, first_token, last_token):
     if node.arg is not None:
