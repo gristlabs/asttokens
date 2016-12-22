@@ -206,6 +206,25 @@ b +     # line3
     self.assertEqual({n for n in m.view_nodes_at(1, 64) if 'Slice:' not in n},
                      { "Subscript:bar[::, :]", "Name:bar" })
 
+  def test_adjacent_strings(self):
+    source = """
+foo = 'x y z' \\
+'''a b c''' "u v w"
+bar = ('x y z'   # comment2
+       'a b c'   # comment3
+       'u v w'
+      )
+"""
+    m = self.create_mark_checker(source)
+    node_name = 'Const' if self.is_astroid_test else 'Str'
+    self.assertEqual(m.view_nodes_at(2, 6), {
+      node_name + ":'x y z' \\\n'''a b c''' \"u v w\""
+    })
+    self.assertEqual(m.view_nodes_at(4, 7), {
+      node_name + ":'x y z'   # comment2\n       'a b c'   # comment3\n       'u v w'"
+    })
+
+
   def test_print_function(self):
     # This testcase imports print as function (using from __future__). Check that we can parse it.
     source = tools.read_fixture('astroid/nonregr.py')

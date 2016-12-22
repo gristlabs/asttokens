@@ -225,18 +225,26 @@ class MarkTokens(object):
       pass
     return (first_token, last_token)
 
+  def visit_str(self, node, first_token, last_token):
+    # Multiple adjacent STRING tokens form a single string.
+    last = self._code.next_token(last_token)
+    while util.match_token(last, token.STRING):
+      last_token = last
+      last = self._code.next_token(last_token)
+    return (first_token, last_token)
+
   def visit_num(self, node, first_token, last_token):
     # A constant like '-1' gets turned into two tokens; this will skip the '-'.
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
     return (first_token, last_token)
 
-  # In Astroid, the Num node is replaced by Const.
+  # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
-    # A constant like '-1' gets turned into two tokens; this will skip the '-'.
     if isinstance(node.value, numbers.Number):
-      while util.match_token(last_token, token.OP):
-        last_token = self._code.next_token(last_token)
+      return self.visit_num(node, first_token, last_token)
+    elif isinstance(node.value, six.string_types):
+      return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
   def visit_keyword(self, node, first_token, last_token):
