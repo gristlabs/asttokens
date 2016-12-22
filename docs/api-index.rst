@@ -16,4 +16,4 @@ LineNumbers
 util
 ----
 .. automodule:: asttokens.util
-    :members: Token, token_repr, visit_tree, walk
+    :members: Token, token_repr, visit_tree, walk, replace

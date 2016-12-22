@@ -183,6 +183,25 @@ def walk(node):
       stack.insert(ins, c)
 
 
+def replace(text, replacements):
+  """
+  Replaces multiple slices of text with new values. This is a convenience method for making code
+  modifications of ranges e.g. as identified by ``ASTTokens.get_text_range(node)``. Replacements is
+  an iterable of ``(start, end, new_text)`` tuples.
+
+  For example, ``replace("this is a test", [(0, 4, "X"), (8, 1, "THE")])`` produces
+  ``"X is THE test"``.
+  """
+  p = 0
+  parts = []
+  for (start, end, new_text) in replacements:
+    parts.append(text[p:start])
+    parts.append(new_text)
+    p = end
+  parts.append(text[p:])
+  return ''.join(parts)
+
+
 class NodeMethods(object):
   """
   Helper to get `visit_{node_type}` methods given a node's class and cache the results.

@@ -1,5 +1,6 @@
 # -*- coding: UTF-8 -*-
 from __future__ import unicode_literals, print_function
+import ast
 import astroid
 import unittest
 from .context import asttokens
@@ -79,6 +80,22 @@ class TestUtil(unittest.TestCase):
       "Const:', '",
       "Const:'world'"
     ])
+
+
+  def test_replace(self):
+    self.assertEqual(asttokens.util.replace("this is a test", [(0, 4, "X"), (8, 9, "THE")]),
+                     "X is THE test")
+    self.assertEqual(asttokens.util.replace("this is a test", []), "this is a test")
+    self.assertEqual(asttokens.util.replace("this is a test", [(7,7," NOT")]), "this is NOT a test")
+
+    source = "foo(bar(1 + 2), 'hello' + ', ' + 'world')"
+    atok = asttokens.ASTTokens(source, parse=True)
+    names = [n for n in asttokens.util.walk(atok.tree) if isinstance(n, ast.Name)]
+    strings = [n for n in asttokens.util.walk(atok.tree) if isinstance(n, ast.Str)]
+    repl1 = [atok.get_text_range(n) + ('TEST',) for n in names]
+    repl2 = [atok.get_text_range(n) + ('val',) for n in strings]
+    self.assertEqual(asttokens.util.replace(source, repl1 + repl2),
+                     "TEST(TEST(1 + 2), val + val + val)")
 
 
 if __name__ == "__main__":
