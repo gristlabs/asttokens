@@ -194,7 +194,7 @@ def replace(text, replacements):
   """
   p = 0
   parts = []
-  for (start, end, new_text) in replacements:
+  for (start, end, new_text) in sorted(replacements):
     parts.append(text[p:start])
     parts.append(new_text)
     p = end

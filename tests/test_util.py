@@ -96,6 +96,8 @@ class TestUtil(unittest.TestCase):
     repl2 = [atok.get_text_range(n) + ('val',) for n in strings]
     self.assertEqual(asttokens.util.replace(source, repl1 + repl2),
                      "TEST(TEST(1 + 2), val + val + val)")
+    self.assertEqual(asttokens.util.replace(source, repl2 + repl1),
+                     "TEST(TEST(1 + 2), val + val + val)")
 
 
 if __name__ == "__main__":
