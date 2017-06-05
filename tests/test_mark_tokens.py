@@ -327,6 +327,16 @@ bar = ('x y z'   # comment2
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
 
+  def test_trailing_commas(self):
+    # Make sure we handle trailing commas on comma-separated structures (e.g. tuples, sets, etc.)
+    for source in (
+      "(a,b,)",
+      "[c,d,]",
+      "{e,f,}",
+      "{h:1,i:2,}"):
+      m = self.create_mark_checker(source)
+      m.verify_all_nodes(self)
+
   def test_del_dict(self):
     # See https://bitbucket.org/plas/thonny/issues/24/try-del-from-dictionary-in-debugging-mode
     source = "x = {4:5}\ndel x[4]"
