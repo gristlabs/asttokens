@@ -74,6 +74,10 @@ def iter_children_func(node):
 
 
 def iter_children_astroid(node):
+  # Don't attempt to process children of JoinedStr nodes, which we can't fully handle yet.
+  if is_joined_str(node):
+    return []
+
   return node.get_children()
 
 
@@ -81,6 +85,10 @@ SINGLETONS = {c for n, c in iteritems(ast.__dict__) if isinstance(c, type) and
               issubclass(c, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop))}
 
 def iter_children_ast(node):
+  # Don't attempt to process children of JoinedStr nodes, which we can't fully handle yet.
+  if is_joined_str(node):
+    return
+
   for child in ast.iter_child_nodes(node):
     # Skip singleton children; they don't reflect particular positions in the code and break the
     # assumptions about the tree consisting of distinct nodes. Note that collecting classes
@@ -108,6 +116,12 @@ def is_stmt(node):
 def is_module(node):
   """Returns whether node is a module node."""
   return node.__class__.__name__ == 'Module'
+
+def is_joined_str(node):
+  """Returns whether node is a JoinedStr node, used to represent f-strings."""
+  # At the moment, nodes below JoinedStr have wrong line/col info, and trying to process them only
+  # leads to errors.
+  return node.__class__.__name__ == 'JoinedStr'
 
 
 # Sentinel value used by visit_tree().

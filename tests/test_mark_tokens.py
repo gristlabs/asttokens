@@ -2,6 +2,7 @@
 from __future__ import unicode_literals, print_function
 import astroid
 import six
+import sys
 import textwrap
 import unittest
 from . import tools
@@ -258,6 +259,22 @@ bar = ('x y z'   # comment2
           "Assign:%s" % source,
           "%s:%s" % ("AssignName" if self.is_astroid_test else "Name", source[:12])
         })
+
+
+  if sys.version_info[0:2] >= (3, 6):
+    # f-strings are only supported in Python36. We don't handle them fully, for a couple of
+    # reasons: parsed AST nodes are not annotated with correct line and col_offset (see
+    # https://bugs.python.org/issue29051), and there are confusingly two levels of tokenizing.
+    # Meanwhile, we only parse to the level of JoinedStr, and verify that.
+    def test_fstrings(self):
+      for source in (
+        '(f"He said his name is {name!r}.",)',
+        "f'{function(kwarg=24)}'",
+        'a = f"""result: {value:{width}.{precision}}"""',
+        """[f"abc {a['x']} def"]""",
+        "def t():\n  return f'{function(kwarg=24)}'"):
+        m = self.create_mark_checker(source)
+        m.verify_all_nodes(self)
 
 
   def test_splat(self):
