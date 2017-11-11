@@ -42,11 +42,12 @@ class ASTTokens(object):
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
   """
-  def __init__(self, source_text, parse=False, tree=None):
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
     if isinstance(source_text, six.binary_type):
       source_text = source_text.decode('utf8')
 
-    self._tree = ast.parse(source_text) if parse else tree
+    self._filename = filename
+    self._tree = ast.parse(source_text, filename) if parse else tree
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
@@ -98,6 +99,11 @@ class ASTTokens(object):
   def tree(self):
     """The root of the AST tree passed into the constructor or parsed from the source code."""
     return self._tree
+
+  @property
+  def filename(self):
+    """The filename that was parsed"""
+    return self._filename
 
   def get_token_from_offset(self, offset):
     """
