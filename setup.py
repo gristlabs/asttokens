@@ -5,9 +5,9 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
-from setuptools import setup
 import io
 from os import path
+from setuptools import setup
 
 here = path.dirname(__file__)
 
@@ -17,7 +17,7 @@ with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
   name='asttokens',
-  version='1.1.6',
+  version='1.1.7',
   description='Annotate AST trees with source code positions',
   long_description=long_description,
   url='https://github.com/gristlabs/asttokens',
