@@ -3,6 +3,7 @@ from __future__ import unicode_literals, print_function
 import ast
 import six
 import token
+import tokenize
 import unittest
 from .context import asttokens
 from . import tools
@@ -64,6 +65,19 @@ class TestASTTokens(unittest.TestCase):
 
     self.assertEqual(list(atok.token_range(atok.tokens[4], atok.tokens[6], include_extra=True)),
                      atok.tokens[4:7])
+
+    # Verify that find_token works, including for non-coding tokens.
+    self.assertEqual(atok.find_token(atok.tokens[3], token.NAME, 'foo'), atok.tokens[5])
+    self.assertEqual(atok.find_token(atok.tokens[3], token.NAME, 'foo', reverse=True),
+                     atok.tokens[9])
+    self.assertEqual(atok.find_token(atok.tokens[3], token.NAME, reverse=True), atok.tokens[1])
+    self.assertEqual(atok.find_token(atok.tokens[5], tokenize.COMMENT), atok.tokens[9])
+    self.assertEqual(atok.find_token(atok.tokens[5], tokenize.COMMENT, reverse=True),
+                     atok.tokens[2])
+    self.assertEqual(atok.find_token(atok.tokens[5], token.NEWLINE), atok.tokens[8])
+    self.assertFalse(token.ISEOF(atok.find_token(atok.tokens[5], tokenize.NEWLINE).type))
+    self.assertEqual(atok.find_token(atok.tokens[5], tokenize.NL), atok.tokens[9])
+    self.assertTrue(token.ISEOF(atok.find_token(atok.tokens[5], tokenize.NL).type))
 
 
   def test_to_source(self):
