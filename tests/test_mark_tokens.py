@@ -225,6 +225,27 @@ bar = ('x y z'   # comment2
       node_name + ":'x y z'   # comment2\n       'a b c'   # comment3\n       'u v w'"
     })
 
+  def test_adjacent_joined_strings(self):
+    if sys.version_info < (3, 6):
+      # This test only makes sense in Python 3.6 and later
+      return
+
+    source = """
+foo = f'x y z' \\
+f'''a b c''' f"u v w"
+bar = ('x y z'   # comment2
+       'a b c'   # comment3
+       f'u v w'
+      )
+"""
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_nodes_at(2, 6), {
+      "JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""
+    })
+    self.assertEqual(m.view_nodes_at(4, 7), {
+      "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
+    })
+
 
   def test_print_function(self):
     # This testcase imports print as function (using from __future__). Check that we can parse it.

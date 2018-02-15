@@ -230,6 +230,12 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
+    return self.handle_str(first_token, last_token)
+
+  def visit_joinedstr(self, node, first_token, last_token):
+    return self.handle_str(first_token, last_token)
+
+  def handle_str(self, first_token, last_token):
     # Multiple adjacent STRING tokens form a single string.
     last = self._code.next_token(last_token)
     while util.match_token(last, token.STRING):
