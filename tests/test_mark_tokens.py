@@ -276,6 +276,23 @@ bar = ('x y z'   # comment2
         m = self.create_mark_checker(source)
         m.verify_all_nodes(self)
 
+    def test_adjacent_joined_strings(self):
+        source = """
+foo = f'x y z' \\
+f'''a b c''' f"u v w"
+bar = ('x y z'   # comment2
+       'a b c'   # comment3
+       f'u v w'
+      )
+"""
+        m = self.create_mark_checker(source)
+        self.assertEqual(m.view_nodes_at(2, 6), {
+            "JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""
+        })
+        self.assertEqual(m.view_nodes_at(4, 7), {
+            "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
+        })
+
 
   def test_splat(self):
     # See https://bitbucket.org/plas/thonny/issues/151/debugger-crashes-when-encountering-a-splat
