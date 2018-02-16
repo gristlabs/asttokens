@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import six
+import sys
 import numbers
 import token
 from . import util
@@ -278,4 +279,12 @@ class MarkTokens(object):
     if util.match_token(first_token, token.NAME, 'except'):
       colon = self._code.find_token(last_token, token.OP, ':')
       first_token = last_token = self._code.prev_token(colon)
+    return (first_token, last_token)
+
+  def visit_with(self, node, first_token, last_token):
+    if sys.version_info < (3, 0):
+      # Apparently in Python 2 the `col_offset` returned by the ast module on With nodes starts
+      # after the `with ` text. This adjusts it so that that text is also included as part of the
+      # node.
+      first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
