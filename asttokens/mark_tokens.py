@@ -281,10 +281,8 @@ class MarkTokens(object):
       first_token = last_token = self._code.prev_token(colon)
     return (first_token, last_token)
 
-  def visit_with(self, node, first_token, last_token):
-    if sys.version_info < (3, 0):
-      # Apparently in Python 2 the `col_offset` returned by the ast module on With nodes starts
-      # after the `with ` text. This adjusts it so that that text is also included as part of the
-      # node.
-      first_token = self._code.prev_token(first_token)
-    return (first_token, last_token)
+  if six.PY2:
+    # No need for this on Python3, which already handles 'with' nodes correctly.
+    def visit_with(self, node, first_token, last_token):
+      first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
+      return (first, last_token)
