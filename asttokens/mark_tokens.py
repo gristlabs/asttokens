@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import six
-import sys
 import numbers
 import token
 from . import util
