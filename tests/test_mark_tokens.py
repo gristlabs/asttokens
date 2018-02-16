@@ -448,3 +448,12 @@ bar = ('x y z'   # comment2
     else:
       self.assertEqual(m.view_nodes_at(5, 0), {'FunctionDef:@deco2(a=1)\ndef g(x):\n  pass'})
     self.assertEqual(m.view_nodes_at(5, 1), {'Name:deco2', 'Call:deco2(a=1)'})
+
+  def test_with(self):
+    source = "with foo: pass"
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_node_types_at(1, 0), {"Module", "With"})
+    self.assertEqual(m.view_nodes_at(1, 0), {
+      "Module:with foo: pass",
+      "With:with foo: pass",
+    })
