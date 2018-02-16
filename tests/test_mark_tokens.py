@@ -448,3 +448,36 @@ bar = ('x y z'   # comment2
     else:
       self.assertEqual(m.view_nodes_at(5, 0), {'FunctionDef:@deco2(a=1)\ndef g(x):\n  pass'})
     self.assertEqual(m.view_nodes_at(5, 1), {'Name:deco2', 'Call:deco2(a=1)'})
+
+  def test_with(self):
+    source = "with foo: pass"
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_node_types_at(1, 0), {"Module", "With"})
+    self.assertEqual(m.view_nodes_at(1, 0), {
+      "Module:with foo: pass",
+      "With:with foo: pass",
+    })
+
+    source = textwrap.dedent(
+      '''
+      def f(x):
+        with A() as a:
+          log(a)
+          with B() as b, C() as c: log(b, c)
+        log(x)
+      ''')
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_nodes_at(5, 4), {
+      'With:with B() as b, C() as c: log(b, c)'
+    })
+    self.assertEqual(m.view_nodes_at(3, 2), {
+      'With:  with A() as a:\n    log(a)\n    with B() as b, C() as c: log(b, c)'
+    })
+    with_nodes = [n for n in m.all_nodes if n.__class__.__name__ == 'With']
+    self.assertEqual({m.view_node(n) for n in with_nodes}, {
+      'With:with B() as b, C() as c: log(b, c)',
+      'With:  with A() as a:\n    log(a)\n    with B() as b, C() as c: log(b, c)',
+    })
+    if not six.PY2:
+      # This verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
+      m.verify_all_nodes(self)
