@@ -244,12 +244,14 @@ bar = ('x y z'   # comment2
       )
 """
         m = self.create_mark_checker(source)
-        self.assertEqual(m.view_nodes_at(2, 6), {
-            "JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""
-        })
-        self.assertEqual(m.view_nodes_at(4, 7), {
-            "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
-        })
+        self.assertIn(m.view_nodes_at(2, 6), [
+            {"Str:f'x y z' \\\nf'''a b c''' f\"u v w\""},
+            {"JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""},
+        ])
+        self.assertIn(m.view_nodes_at(4, 7), [
+            {"Str:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"},
+            {"JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"},
+        ])
 
 
   def test_splat(self):
