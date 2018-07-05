@@ -1,11 +1,11 @@
 # -*- coding: UTF-8 -*-
 from __future__ import unicode_literals, print_function
-import ast
 import six
 import token
 import tokenize
 import unittest
 from .context import asttokens
+ast = asttokens.util.ast
 from . import tools
 
 class TestASTTokens(unittest.TestCase):

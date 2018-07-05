@@ -12,11 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
 import collections
 import token
+import sys
 from six import iteritems
 
+import astroid
+if astroid.__version__ < '2':
+  import ast
+else:
+  try:
+    if sys.version_info.major >= 3:
+      import typed_ast.ast3 as ast
+    else:
+      import typed_ast.ast27 as ast
+  except ImportError:
+    import ast
 
 def token_repr(tok_type, string):
   """Returns a human-friendly representation of a token with the given type and string."""

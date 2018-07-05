@@ -148,48 +148,6 @@ b +     # line3
   def test_fixture12(self): self.verify_fixture_file('astroid/recursion.py')
   def test_fixture13(self): self.verify_fixture_file('astroid/suppliermodule_test.py')
 
-
-  def test_deep_recursion(self):
-    # This testcase has 1050 strings joined with '+', which causes naive recursions to fail with
-    # 'maximum recursion depth exceeded' error. We actually handle it just fine, but we can't use
-    # to_source() on it because it chokes on recursion depth. So we test individual nodes.
-    source = tools.read_fixture('astroid/joined_strings.py')
-
-    astroid.MANAGER.optimize_ast = True
-    try:
-      m = self.create_mark_checker(source)
-    finally:
-      astroid.MANAGER.optimize_ast = False
-
-    if self.is_astroid_test:
-      self.assertEqual(len(m.all_nodes), 4)     # This is the result of astroid's optimization
-      self.assertEqual(m.view_node_types_at(1, 0), {'Module', 'Assign', 'AssignName'})
-      const = next(n for n in m.all_nodes if isinstance(n, astroid.nodes.Const))
-      # TODO: Astroid's optimization makes it impossible to get the right start-end information
-      # for the combined node. So this test fails. To avoid it, don't set 'optimize_ast=True'. To
-      # fix it, astroid would probably need to record the info from the nodes it's combining. Or
-      # astroid could avoid the need for the optimization by using an explicit stack like we do.
-      #self.assertEqual(m.atok.get_text_range(const), (5, len(source) - 1))
-    else:
-      self.assertEqual(len(m.all_nodes), 2104)
-      self.assertEqual(m.view_node(m.all_nodes[-1]),
-                       "Str:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")
-      self.assertEqual(m.view_node(m.all_nodes[-2]),
-                       "Str:'Ii0uLDAxLzI0Mh44U0gxMDI5JkM0JjU3NDY6Kjc5Njo7OUE8Ozw+Oz89QTxA'")
-      self.assertEqual(m.view_node(m.all_nodes[1053]),
-                       "Str:'R0lGODlhigJnAef/AAABAAEEAAkCAAMGAg0GBAYJBQoMCBMODQ4QDRITEBkS'")
-      self.assertEqual(m.view_node(m.all_nodes[1052]),
-                       "BinOp:'R0lGODlhigJnAef/AAABAAEEAAkCAAMGAg0GBAYJBQoMCBMODQ4QDRITEBkS'\r\n" +
-                       "     +'CxsSEhkWDhYYFQ0aJhkaGBweGyccGh8hHiIkIiMmGTEiHhQoPSYoJSkqKDcp'")
-
-      binop = next(n for n in m.all_nodes if n.__class__.__name__ == 'BinOp')
-      self.assertTrue(m.atok.get_text(binop).startswith("'R0l"))
-      self.assertTrue(m.atok.get_text(binop).endswith("AA7'"))
-
-    assign = next(n for n in m.all_nodes if n.__class__.__name__ == 'Assign')
-    self.assertTrue(m.atok.get_text(assign).startswith("x = ("))
-    self.assertTrue(m.atok.get_text(assign).endswith(")"))
-
   def test_slices(self):
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
     source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::, :])"
@@ -286,12 +244,14 @@ bar = ('x y z'   # comment2
       )
 """
         m = self.create_mark_checker(source)
-        self.assertEqual(m.view_nodes_at(2, 6), {
-            "JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""
-        })
-        self.assertEqual(m.view_nodes_at(4, 7), {
-            "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
-        })
+        self.assertIn(m.view_nodes_at(2, 6), [
+            {"Str:f'x y z' \\\nf'''a b c''' f\"u v w\""},
+            {"JoinedStr:f'x y z' \\\nf'''a b c''' f\"u v w\""},
+        ])
+        self.assertIn(m.view_nodes_at(4, 7), [
+            {"Str:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"},
+            {"JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"},
+        ])
 
 
   def test_splat(self):
