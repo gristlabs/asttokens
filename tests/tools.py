@@ -125,7 +125,9 @@ class MarkChecker(object):
       rebuilt_node = parse_snippet(text, is_expr=util.is_expr(node), is_module=util.is_module(node))
 
       # Now we need to check if the two nodes are equivalent.
-      test_case.assertEqual(to_source(rebuilt_node), to_source(node))
+      left = to_source(rebuilt_node)
+      right = to_source(node)
+      test_case.assertEqual(left, right)
       tested_nodes += 1
 
     return tested_nodes
