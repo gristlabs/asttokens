@@ -3,6 +3,7 @@ from __future__ import unicode_literals, print_function
 import astroid
 import six
 import sys
+import token
 import textwrap
 import unittest
 from . import tools
@@ -155,13 +156,19 @@ b +     # line3
     # to_source() on it because it chokes on recursion depth. So we test individual nodes.
     source = tools.read_fixture('astroid/joined_strings.py')
 
-    astroid.MANAGER.optimize_ast = True
-    try:
-      m = self.create_mark_checker(source)
-    finally:
-      astroid.MANAGER.optimize_ast = False
-
     if self.is_astroid_test:
+      if getattr(astroid, '__version__', '1') >= '2':
+        # Astroid 2 no longer supports this; see
+        # https://github.com/PyCQA/astroid/issues/557#issuecomment-396004274
+        self.skipTest('astroid-2.0 does not support this')
+
+      # Astroid < 2 does support this with optimize_ast set to True
+      astroid.MANAGER.optimize_ast = True
+      try:
+        m = self.create_mark_checker(source)
+      finally:
+        astroid.MANAGER.optimize_ast = False
+
       self.assertEqual(len(m.all_nodes), 4)     # This is the result of astroid's optimization
       self.assertEqual(m.view_node_types_at(1, 0), {'Module', 'Assign', 'AssignName'})
       const = next(n for n in m.all_nodes if isinstance(n, astroid.nodes.Const))
@@ -171,6 +178,7 @@ b +     # line3
       # astroid could avoid the need for the optimization by using an explicit stack like we do.
       #self.assertEqual(m.atok.get_text_range(const), (5, len(source) - 1))
     else:
+      m = self.create_mark_checker(source)
       self.assertEqual(len(m.all_nodes), 2104)
       self.assertEqual(m.view_node(m.all_nodes[-1]),
                        "Str:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")

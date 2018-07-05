@@ -57,6 +57,20 @@ def expect_token(token, tok_type, tok_str=None):
       token_repr(tok_type, tok_str), str(token),
       token.start[0], token.start[1] + 1))
 
+# These were previously defined in tokenize.py and distinguishable by being greater than
+# token.N_TOKEN. As of python3.7, they are in token.py, and we check for them explicitly.
+if hasattr(token, 'COMMENT'):
+  def is_non_coding_token(token_type):
+    """
+    These are considered non-coding tokens, as they don't affect the syntax tree.
+    """
+    return token_type in (token.NL, token.COMMENT, token.ENCODING)
+else:
+  def is_non_coding_token(token_type):
+    """
+    These are considered non-coding tokens, as they don't affect the syntax tree.
+    """
+    return token_type >= token.N_TOKENS
 
 def iter_children(node):
   """
