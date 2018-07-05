@@ -1,5 +1,4 @@
 from __future__ import unicode_literals, print_function
-import ast
 import astroid
 import asttokens
 import copy
@@ -8,7 +7,7 @@ import os
 import re
 import sys
 from asttokens import util
-
+ast = util.ast
 
 def get_fixture_path(*path_parts):
   python_dir = 'python%s' % sys.version_info[0]

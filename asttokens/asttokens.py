@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
 import bisect
 import token
 import tokenize
@@ -20,7 +19,7 @@ import io
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
-from .util import Token, match_token
+from .util import ast, Token, match_token
 from .mark_tokens import MarkTokens
 
 class ASTTokens(object):
