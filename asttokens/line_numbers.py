@@ -45,7 +45,7 @@ class LineNumbers(object):
       offsets.append(len(line_text))
       self._utf8_offset_cache[line] = offsets
 
-    return offsets[max(0, min(len(offsets), utf8_column))]
+    return offsets[max(0, min(len(offsets)-1, utf8_column))]
 
   def line_to_offset(self, line, column):
     """
