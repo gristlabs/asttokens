@@ -137,9 +137,15 @@ class TestASTTokens(unittest.TestCase):
 
   def test_coding_declaration(self):
     """ASTTokens should be able to parse a string with a coding declaration."""
-    # In Python 2, a unicode string with a coding declaration is a SyntaxError.
-    # So, if we aren't careful, this will raise a SyntaxError in Python 2:
-    asttokens.ASTTokens(str("# coding: ascii\n1"), parse=True)
+    # In Python 2, a unicode string with a coding declaration is a SyntaxError, but we should be
+    # able to parse a byte string with a coding declaration (as long as its utf-8 compatible).
+    atok = asttokens.ASTTokens(str("# coding: ascii\n1"), parse=True)
+    self.assertEqual([str(t) for t in atok.tokens], [
+      "COMMENT:'# coding: ascii'",
+      "NL:'\\n'",
+      "NUMBER:'1'",
+      "ENDMARKER:''"
+    ])
 
 if __name__ == "__main__":
   unittest.main()
