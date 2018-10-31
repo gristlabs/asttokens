@@ -10,10 +10,10 @@ publish:
 
 docs:
 	@echo Build documentation in docs/_build/html
-	source env/bin/activate ; $(MAKE) -C docs html
+	source env/bin/activate ; PYTHONPATH=$(abspath .) $(MAKE) -C docs html
 
 clean:
 	python setup.py clean
-	source env/bin/activate ; $(MAKE) -C docs clean
+	source env/bin/activate ; PYTHONPATH=$(abspath .) $(MAKE) -C docs clean
 
 .PHONY: dist publish docs clean
