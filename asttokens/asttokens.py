@@ -43,11 +43,14 @@ class ASTTokens(object):
   tree created separately.
   """
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
-    if isinstance(source_text, six.binary_type):
-      source_text = source_text.decode('utf8')
-
     self._filename = filename
     self._tree = ast.parse(source_text, filename) if parse else tree
+
+    # Decode source after parsing to let Python 2 handle coding declarations.
+    # (If the encoding was not utf-8 compatible, then even if it parses correctly,
+    # we'll fail with a unicode error here.)
+    if isinstance(source_text, six.binary_type):
+      source_text = source_text.decode('utf8')
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
