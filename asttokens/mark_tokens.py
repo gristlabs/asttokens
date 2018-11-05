@@ -213,7 +213,11 @@ class MarkTokens(object):
     # A function call isn't over until we see a closing paren. Remember that last_token is at the
     # end of all children, so we are not worried about encountering a paren that belongs to a
     # child.
-    return (first_token, self._code.find_token(last_token, token.OP, ')'))
+    first_child = next(self._iter_children(node))
+    call_start = self._code.find_token(first_child.last_token, token.OP, '(')
+    if call_start.index > last_token.index:
+      last_token = call_start
+    return (first_token, last_token)
 
   def visit_subscript(self, node, first_token, last_token):
     # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
