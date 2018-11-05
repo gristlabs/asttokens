@@ -489,3 +489,27 @@ bar = ('x y z'   # comment2
     if not six.PY2:
       # This verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
       m.verify_all_nodes(self)
+
+  def test_parens_around_func(self):
+    source = textwrap.dedent(
+      '''
+      foo()
+      (foo)()
+      (lambda: 0)()
+      (lambda: ())()
+      (foo)((1))
+      (lambda: ())((2))
+      x = (obj.attribute.get_callback() or default_callback)()
+      ''')
+    m = self.create_mark_checker(source)
+    self.assertEqual(m.view_nodes_at(2, 0), {"Name:foo", "Expr:foo()", "Call:foo()"})
+    self.assertEqual(m.view_nodes_at(3, 1), {"Name:foo"})
+    self.assertEqual(m.view_nodes_at(3, 0), {"Expr:(foo)()", "Call:(foo)()"})
+    self.assertEqual(m.view_nodes_at(4, 0), {"Expr:(lambda: 0)()", "Call:(lambda: 0)()"})
+    self.assertEqual(m.view_nodes_at(5, 0), {"Expr:(lambda: ())()", "Call:(lambda: ())()"})
+    self.assertEqual(m.view_nodes_at(6, 0), {"Expr:(foo)((1))", "Call:(foo)((1))"})
+    self.assertEqual(m.view_nodes_at(7, 0), {"Expr:(lambda: ())((2))", "Call:(lambda: ())((2))"})
+    self.assertEqual(m.view_nodes_at(8, 4),
+                     {"Call:(obj.attribute.get_callback() or default_callback)()"})
+    self.assertIn('BoolOp:obj.attribute.get_callback() or default_callback', m.view_nodes_at(8, 5))
+    m.verify_all_nodes(self)
