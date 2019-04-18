@@ -132,3 +132,14 @@ class MarkChecker(object):
       tested_nodes += 1
 
     return tested_nodes
+
+
+def Constant(name):
+  """Helper to write tests working on all Python versions.
+
+  Return 'Constant' on Python 3.8 and newer, or name on older Python.
+  """
+  if sys.version_info >= (3, 8):
+    return 'Constant'
+  else:
+    return name

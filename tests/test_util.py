@@ -2,8 +2,10 @@
 from __future__ import unicode_literals, print_function
 import ast
 import astroid
+import sys
 import unittest
 from .context import asttokens
+from .tools import Constant
 
 class TestUtil(unittest.TestCase):
 
@@ -48,13 +50,13 @@ class TestUtil(unittest.TestCase):
       'Call:bar(1 + 2)',
       'Name:bar',
       'BinOp:1 + 2',
-      'Num:1',
-      'Num:2',
+      '%s:1' % Constant('Num'),
+      '%s:2' % Constant('Num'),
       "BinOp:'hello' + ', ' + 'world'",
       "BinOp:'hello' + ', '",
-      "Str:'hello'",
-      "Str:', '",
-      "Str:'world'"
+      "%s:'hello'" % Constant('Str'),
+      "%s:', '" % Constant('Str'),
+      "%s:'world'" % Constant('Str'),
     ])
 
   def test_walk_astroid(self):
