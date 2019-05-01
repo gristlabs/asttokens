@@ -125,7 +125,7 @@ b +     # line3
     'astroid/email.py':               ( 3,    3,    1,    1,   ),
     'astroid/format.py':              ( 64,   61,   62,   62,  ),
     'astroid/module.py':              ( 185,  174,  171,  171, ),
-    'astroid/module2.py':             ( 248,  253,  235,  248, ),
+    'astroid/module2.py':             ( 248,  253,  240,  253, ),
     'astroid/noendingnewline.py':     ( 57,   59,   57,   63,  ),
     'astroid/notall.py':              ( 15,   17,   15,   17,  ),
     'astroid/recursion.py':           ( 6,    6,    4,    4,   ),

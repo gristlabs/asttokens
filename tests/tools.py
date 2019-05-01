@@ -1,14 +1,13 @@
 from __future__ import unicode_literals, print_function
 import ast
-import astroid
-import asttokens
-import copy
 import io
 import os
 import re
 import sys
-from asttokens import util
 
+import astroid
+import asttokens
+from asttokens import util
 
 def get_fixture_path(*path_parts):
   python_dir = 'python%s' % sys.version_info[0]
@@ -17,7 +16,6 @@ def get_fixture_path(*path_parts):
 def read_fixture(*path_parts):
   with io.open(get_fixture_path(*path_parts), "r", newline="\n") as f:
     return f.read()
-
 
 def _parse_stmt(text):
   # ast.parse produces a module, but we here want to produce a single statement.
@@ -35,12 +33,11 @@ def parse_snippet(text, is_expr=False, is_module=False):
   indented = re.match(r'^[ \t]+\S', text)
   if indented:
     return _parse_stmt('def dummy():\n' + text).body[0]
-  elif is_expr:
+  if is_expr:
     return _parse_stmt('(' + text + ')').value
-  elif is_module:
+  if is_module:
     return ast.parse(text, 'exec')
-  else:
-    return _parse_stmt(text)
+  return _parse_stmt(text)
 
 
 def to_source(node):
@@ -52,9 +49,8 @@ def to_source(node):
     return node.as_string()
 
   builder = astroid.rebuilder.TreeRebuilder(astroid.manager.AstroidManager())
-  # We need to make a deep copy of node; not sure why, but node seems affected by the astroid
-  # TreeRebuilder.
-  node_copy = copy.deepcopy(node)
+  # We need to make a copy of node that astroid can process.
+  node_copy = create_astroid_ast(node)
   if isinstance(node, ast.Module):
     anode = builder.visit_module(node_copy, '', '', '')
   else:
@@ -63,11 +59,38 @@ def to_source(node):
     anode = builder.visit(node_copy, amodule)
   return anode.as_string()
 
+def create_astroid_ast(node):
+  if hasattr(astroid, "_ast"):
+    # A bit of a hack, reaching into astroid, but we need to re-create the tree with the parser
+    # module that astroid understands, to be able to use TreeRebuilder on it.
+    parser_module = astroid._ast._get_parser_module()   # pylint: disable=no-member,protected-access
+  else:
+    parser_module = ast
+  return ConvertAST(parser_module).visit(node)
+
+class ConvertAST(ast.NodeVisitor):
+  """Allows converting from ast nodes to typed_ast.ast27 or typed_ast.ast3 nodes."""
+  def __init__(self, ast_module):
+    self._ast_module = ast_module
+
+  def visit(self, node):
+    converted_class = getattr(self._ast_module, node.__class__.__name__)
+    new_node = converted_class()
+    for field, old_value in ast.iter_fields(node):
+      new_value = ([self.maybe_visit(n) for n in old_value] if isinstance(old_value, list) else
+                   self.maybe_visit(old_value))
+      setattr(new_node, field, new_value)
+    for attr in getattr(node, '_attributes', ()):
+      setattr(new_node, attr, getattr(node, attr))
+    return new_node
+
+  def maybe_visit(self, node):
+    return self.visit(node) if isinstance(node, ast.AST) else node
 
 def collect_nodes_preorder(root):
   """Returns a list of all nodes using pre-order traversal (i.e. parent before children)."""
   nodes = []
-  def append(node, par_value):
+  def append(node, par_value):    # pylint: disable=unused-argument
     nodes.append(node)
     return (None, None)
   util.visit_tree(root, append, None)
@@ -117,18 +140,17 @@ class MarkChecker(object):
       if not (util.is_stmt(node) or util.is_expr(node) or util.is_module(node)):
         continue
 
-      if isinstance(node, astroid.nodes.Yield):
-        # Astroid stringifies Yield nodes differently depending on parent, so these are too
-        # annoying to verify.
-        continue
-
       text = self.atok.get_text(node)
       rebuilt_node = parse_snippet(text, is_expr=util.is_expr(node), is_module=util.is_module(node))
 
       # Now we need to check if the two nodes are equivalent.
-      left = to_source(rebuilt_node)
-      right = to_source(node)
+      left = _yield_fix(to_source(rebuilt_node))
+      right = _yield_fix(to_source(node))
       test_case.assertEqual(left, right)
       tested_nodes += 1
 
     return tested_nodes
+
+# Yield nodes are parenthesized depending on context; to ease verifications, parenthesize always.
+def _yield_fix(text):
+  return "(" + text + ")" if text.startswith("yield") else text
