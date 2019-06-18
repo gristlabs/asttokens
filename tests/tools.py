@@ -96,6 +96,10 @@ def collect_nodes_preorder(root):
   util.visit_tree(root, append, None)
   return nodes
 
+def get_node_name(node):
+   name = node.__class__.__name__
+   return 'Constant' if name in ('Num', 'Str', 'NameConstant') else name
+
 
 class MarkChecker(object):
   """
@@ -112,7 +116,7 @@ class MarkChecker(object):
 
   def view_node(self, node):
     """Returns a representation of a node and its text, such as "Call:foo()". """
-    return "%s:%s" % (node.__class__.__name__, self.atok.get_text(node))
+    return "%s:%s" % (get_node_name(node), self.atok.get_text(node))
 
   def view_nodes_at(self, line, col):
     """
