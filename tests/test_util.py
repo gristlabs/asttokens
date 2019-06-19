@@ -4,6 +4,7 @@ import ast
 import astroid
 import unittest
 from .context import asttokens
+from .tools import get_node_name
 
 class TestUtil(unittest.TestCase):
 
@@ -37,7 +38,7 @@ class TestUtil(unittest.TestCase):
     atok = asttokens.ASTTokens(self.source, parse=True)
 
     def view(node):
-      return "%s:%s" % (node.__class__.__name__, atok.get_text(node))
+      return "%s:%s" % (get_node_name(node), atok.get_text(node))
 
     scan = [view(n) for n in asttokens.util.walk(atok.tree)]
     self.assertEqual(scan, [
@@ -48,20 +49,20 @@ class TestUtil(unittest.TestCase):
       'Call:bar(1 + 2)',
       'Name:bar',
       'BinOp:1 + 2',
-      'Num:1',
-      'Num:2',
+      'Constant:1',
+      'Constant:2',
       "BinOp:'hello' + ', ' + 'world'",
       "BinOp:'hello' + ', '",
-      "Str:'hello'",
-      "Str:', '",
-      "Str:'world'"
+      "Constant:'hello'",
+      "Constant:', '",
+      "Constant:'world'"
     ])
 
   def test_walk_astroid(self):
     atok = asttokens.ASTTokens(self.source, tree=astroid.builder.parse(self.source))
 
     def view(node):
-      return "%s:%s" % (node.__class__.__name__, atok.get_text(node))
+      return "%s:%s" % (get_node_name(node), atok.get_text(node))
 
     scan = [view(n) for n in asttokens.util.walk(atok.tree)]
     self.assertEqual(scan, [

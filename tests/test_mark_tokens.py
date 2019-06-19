@@ -181,11 +181,11 @@ b +     # line3
       m = self.create_mark_checker(source)
       self.assertEqual(len(m.all_nodes), 2104)
       self.assertEqual(m.view_node(m.all_nodes[-1]),
-                       "Str:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")
+                       "Constant:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")
       self.assertEqual(m.view_node(m.all_nodes[-2]),
-                       "Str:'Ii0uLDAxLzI0Mh44U0gxMDI5JkM0JjU3NDY6Kjc5Njo7OUE8Ozw+Oz89QTxA'")
+                       "Constant:'Ii0uLDAxLzI0Mh44U0gxMDI5JkM0JjU3NDY6Kjc5Njo7OUE8Ozw+Oz89QTxA'")
       self.assertEqual(m.view_node(m.all_nodes[1053]),
-                       "Str:'R0lGODlhigJnAef/AAABAAEEAAkCAAMGAg0GBAYJBQoMCBMODQ4QDRITEBkS'")
+                       "Constant:'R0lGODlhigJnAef/AAABAAEEAAkCAAMGAg0GBAYJBQoMCBMODQ4QDRITEBkS'")
       self.assertEqual(m.view_node(m.all_nodes[1052]),
                        "BinOp:'R0lGODlhigJnAef/AAABAAEEAAkCAAMGAg0GBAYJBQoMCBMODQ4QDRITEBkS'\r\n" +
                        "     +'CxsSEhkWDhYYFQ0aJhkaGBweGyccGh8hHiIkIiMmGTEiHhQoPSYoJSkqKDcp'")
@@ -225,7 +225,7 @@ bar = ('x y z'   # comment2
       )
 """
     m = self.create_mark_checker(source)
-    node_name = 'Const' if self.is_astroid_test else 'Str'
+    node_name = 'Const' if self.is_astroid_test else 'Constant'
     self.assertEqual(m.view_nodes_at(2, 6), {
       node_name + ":'x y z' \\\n'''a b c''' \"u v w\""
     })
@@ -336,7 +336,7 @@ bar = ('x y z'   # comment2
     name_a = 'AssignName:a' if self.is_astroid_test else 'Name:a'
     const_true = ('Const:True' if self.is_astroid_test else
                   'Name:True' if six.PY2 else
-                  'NameConstant:True')
+                  'Constant:True')
     self.assertEqual(m.view_nodes_at(1, 0),
                      {name_a, "Assign:a = True if True else False", "Module:" + source})
     self.assertEqual(m.view_nodes_at(1, 4),
@@ -388,7 +388,7 @@ bar = ('x y z'   # comment2
     if self.is_astroid_test:
       self.assertEqual(m.view_nodes_at(1, 5), {'Const:4'})
     else:
-      self.assertEqual(m.view_nodes_at(1, 5), {'Num:4'})
+      self.assertEqual(m.view_nodes_at(1, 5), {'Constant:4'})
     self.assertEqual(m.view_nodes_at(2, 0), {'Delete:del x[4]'})
     self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
 
@@ -428,7 +428,7 @@ bar = ('x y z'   # comment2
       self.assertEqual(m.view_nodes_at(2, 8), {'Keyword:b=[y]'})
     else:
       self.assertEqual(m.view_nodes_at(1, 2), {'keyword:x=1'})
-      self.assertEqual(m.view_nodes_at(1, 4), {'Num:1'})
+      self.assertEqual(m.view_nodes_at(1, 4), {'Constant:1'})
       self.assertEqual(m.view_nodes_at(2, 2), {'keyword:a=(x)'})
       self.assertEqual(m.view_nodes_at(2, 8), {'keyword:b=[y]'})
 
