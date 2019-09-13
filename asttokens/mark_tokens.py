@@ -140,8 +140,8 @@ class MarkTokens(object):
     # Once done, extend `last_token` to match any unclosed parens/braces.
     for match in reversed(to_match_right):
       last = self._code.next_token(last_token)
-      # Allow for a trailing comma before the closing delimiter.
-      if util.match_token(last, token.OP, ','):
+      # Allow for trailing commas or colons (allowed in subscripts) before the closing delimiter
+      while any(util.match_token(last, token.OP, x) for x in (',', ':')):
         last = self._code.next_token(last)
       # Now check for the actual closing delimiter.
       if util.match_token(last, *match):
