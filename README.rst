@@ -33,7 +33,7 @@ Usage
 ASTTokens works with both Python2 and Python3.
 
 ASTTokens can annotate both trees built by `ast <https://docs.python.org/2/library/ast.html>`_,
-AND those built by `astroid <https://www.astroid.org/>`_.
+AND those built by `astroid`_.
 
 Here's an example:
 
