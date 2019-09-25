@@ -379,6 +379,13 @@ bar = ('x y z'   # comment2
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
 
+  def test_dict_order(self):
+    # Make sure we iterate over dict keys/values in source order.
+    # See https://github.com/gristlabs/asttokens/issues/31
+    source = 'f({1: (2), 3: 4}, object())'
+    m = self.create_mark_checker(source)
+    m.verify_all_nodes(self)
+
   def test_del_dict(self):
     # See https://bitbucket.org/plas/thonny/issues/24/try-del-from-dictionary-in-debugging-mode
     source = "x = {4:5}\ndel x[4]"
