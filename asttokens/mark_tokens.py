@@ -266,6 +266,8 @@ class MarkTokens(object):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
+  visit_constant = visit_const
+
   def visit_keyword(self, node, first_token, last_token):
     if node.arg is not None:
       equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
