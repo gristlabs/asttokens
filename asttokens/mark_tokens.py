@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import six
 import numbers
+import sys
 import token
-from . import util
 
+import six
+
+from . import util
 
 # Mapping of matching braces. To find a token here, look up token[:2].
 _matching_pairs_left = {
@@ -171,8 +173,9 @@ class MarkTokens(object):
     util.expect_token(before, token.OP, open_brace)
     return (before, last_token)
 
-  def visit_listcomp(self, node, first_token, last_token):
-    return self.handle_comp('[', node, first_token, last_token)
+  if sys.version_info[:2] < (3, 8):
+    def visit_listcomp(self, node, first_token, last_token):
+      return self.handle_comp('[', node, first_token, last_token)
 
   if six.PY2:
     # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
