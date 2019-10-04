@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
 import six
 import numbers
 import token
@@ -251,6 +252,15 @@ class MarkTokens(object):
     # A constant like '-1' gets turned into two tokens; this will skip the '-'.
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
+
+    # This makes sure that the - is included
+    if first_token.type == token.NUMBER:
+      if isinstance(node, ast.AST):
+        value = node.n
+      else:
+        value = node.value
+      if value < 0:
+        first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
 
   # In Astroid, the Num and Str nodes are replaced by Const.

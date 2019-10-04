@@ -59,7 +59,7 @@ def expect_token(token, tok_type, tok_str=None):
 
 # These were previously defined in tokenize.py and distinguishable by being greater than
 # token.N_TOKEN. As of python3.7, they are in token.py, and we check for them explicitly.
-if hasattr(token, 'COMMENT'):
+if hasattr(token, 'ENCODING'):
   def is_non_coding_token(token_type):
     """
     These are considered non-coding tokens, as they don't affect the syntax tree.
