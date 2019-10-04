@@ -202,15 +202,17 @@ class MarkTokens(object):
   visit_assignattr = handle_attr
   visit_delattr = handle_attr
 
-  def handle_doc(self, node, first_token, last_token):
+  def visit_functiondef(self, node, first_token, last_token):
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
     if not node.body and getattr(node, 'doc', None):
       last_token = self._code.find_token(last_token, token.STRING)
+    prev = self._code.prev_token(first_token)
+    if prev[:2] == (token.OP, '@'):
+      first_token = prev
     return (first_token, last_token)
 
-  visit_classdef = handle_doc
-  visit_funcdef = handle_doc
+  visit_classdef = visit_functiondef
 
   def visit_call(self, node, first_token, last_token):
     # A function call isn't over until we see a closing paren. Remember that last_token is at the
