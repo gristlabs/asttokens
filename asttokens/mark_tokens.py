@@ -105,22 +105,6 @@ class MarkTokens(object):
       newline = self._code.find_token(start_token, token.ENDMARKER)
     return self._code.prev_token(newline)
 
-  def _iter_non_child_tokens(self, first_token, last_token, node):
-    """
-    Generates all tokens in [first_token, last_token] range that do not belong to any children of
-    node. E.g. `foo(bar)` has children `foo` and `bar`, but we would yield the `(`.
-    """
-    tok = first_token
-    for n in self._iter_children(node):
-      for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
-        yield t
-      if n.last_token.index >= last_token.index:
-        return
-      tok = self._code.next_token(n.last_token)
-
-    for t in self._code.token_range(tok, last_token):
-      yield t
-
   def _expand_to_matching_pairs(self, first_token, last_token, node):
     """
     Scan tokens in [first_token, last_token] range that are between node's children, and for any
@@ -130,7 +114,7 @@ class MarkTokens(object):
     # child nodes). If we find any closing ones, we match them to the opens.
     to_match_right = []
     to_match_left = []
-    for tok in self._iter_non_child_tokens(first_token, last_token, node):
+    for tok in self._code.token_range(first_token, last_token):
       tok_info = tok[:2]
       if to_match_right and tok_info == to_match_right[-1]:
         to_match_right.pop()
@@ -258,16 +242,23 @@ class MarkTokens(object):
       last = self._code.next_token(last_token)
     return (first_token, last_token)
 
-  def visit_num(self, node, first_token, last_token):
+  def handle_num(self, node, value, first_token, last_token):
     # A constant like '-1' gets turned into two tokens; this will skip the '-'.
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
+
+    # This makes sure that the - is included
+    if value < 0 and first_token.type == token.NUMBER:
+        first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
+
+  def visit_num(self, node, first_token, last_token):
+    return self.handle_num(node, node.n, first_token, last_token)
 
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     if isinstance(node.value, numbers.Number):
-      return self.visit_num(node, first_token, last_token)
+      return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, six.string_types):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
