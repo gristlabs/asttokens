@@ -256,3 +256,22 @@ class NodeMethods(object):
       method = getattr(obj, name, obj.visit_default)
       self._cache[cls] = method
     return method
+
+
+def matched_paretheses(chars):
+  count = 0
+  for c in chars:
+    if c == "(":
+      count += 1
+    elif c == ")":
+      count -= 1
+    if count < 0:
+      return False
+  return count == 0
+
+
+def is_parentheses(first_token, last_token):
+  return (
+    match_token(first_token, token.OP, '(') and
+    match_token(last_token, token.OP, ')')
+  )

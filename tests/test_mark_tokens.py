@@ -98,7 +98,6 @@ b +     # line3
       # All other expressions preserve newlines and comments but are parenthesized.
       'b +     # line3\n  c',
       'b +     # line3\n  c +   # line4\n  d',
-      'a,      # line2\nb +     # line3\n  c +   # line4\n  d',
     })
 
 
@@ -202,8 +201,13 @@ b +     # line3
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
     source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::, :])"
     m = self.create_mark_checker(source)
+    self.assertEqual(m.view_nodes_at(1, 0),
+                     {
+                       typ + ":" + source
+                       for typ in ["Module", "Expr", "Tuple"]
+                     })
     self.assertEqual(m.view_nodes_at(1, 1),
-                     { "Attribute:foo.Area_Code", "Name:foo", "Tuple:"+source[1:-1] })
+                     { "Attribute:foo.Area_Code", "Name:foo"} )
     self.assertEqual(m.view_nodes_at(1, 16),
                      { "Subscript:str(foo.Phone)[:3]", "Call:str(foo.Phone)", "Name:str"})
     self.assertEqual(m.view_nodes_at(1, 36),

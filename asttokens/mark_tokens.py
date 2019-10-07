@@ -219,13 +219,39 @@ class MarkTokens(object):
     return (first_token, self._code.find_token(last_token, token.OP, ']'))
 
   def visit_tuple(self, node, first_token, last_token):
-    # A tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
-    try:
-      maybe_comma = self._code.next_token(last_token)
-      if util.match_token(maybe_comma, token.OP, ','):
-        last_token = maybe_comma
-    except IndexError:
-      pass
+    # Tuples may or may not contain parentheses
+    # If they do, we want to include them
+    # We may or may not already have them, we need to find out
+    # We have them if the tokens start and end with matching ()
+    # meaning if we remove them we are still left with matching parens
+    contains_parens = False
+    if util.is_parentheses(first_token, last_token):
+      ops = [
+              tok
+              for tok in self._code.token_range(first_token, last_token)
+              if tok.type == token.OP
+            ][1:-1]
+      if util.matched_paretheses(ops):
+        contains_parens = True
+
+    # If there is a trailing comma, make it part of the tuple.
+    if not contains_parens:
+      try:
+        maybe_comma = self._code.next_token(last_token)
+        if util.match_token(maybe_comma, token.OP, ','):
+          last_token = maybe_comma
+      except IndexError:
+        pass
+
+    # If we don't already have parens, and we are immediately surrounded
+    # by (), grab those as part of the tuple
+    if not contains_parens and first_token.index > 0:
+      prev = self._code.prev_token(first_token)
+      last = self._code.next_token(last_token)
+      if util.is_parentheses(prev, last):
+        first_token = prev
+        last_token = last
+
     return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
