@@ -12,12 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
-import six
 import numbers
+import sys
 import token
-from . import util
 
+import six
+
+from . import util
 
 # Mapping of matching braces. To find a token here, look up token[:2].
 _matching_pairs_left = {
@@ -156,8 +157,11 @@ class MarkTokens(object):
     util.expect_token(before, token.OP, open_brace)
     return (before, last_token)
 
-  def visit_listcomp(self, node, first_token, last_token):
-    return self.handle_comp('[', node, first_token, last_token)
+  # Python 3.8 fixed the starting position of list comprehensions:
+  # https://bugs.python.org/issue31241
+  if sys.version_info < (3, 8):
+    def visit_listcomp(self, node, first_token, last_token):
+      return self.handle_comp('[', node, first_token, last_token)
 
   if six.PY2:
     # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
@@ -184,15 +188,21 @@ class MarkTokens(object):
   visit_assignattr = handle_attr
   visit_delattr = handle_attr
 
-  def handle_doc(self, node, first_token, last_token):
+  def handle_def(self, node, first_token, last_token):
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
     if not node.body and getattr(node, 'doc', None):
       last_token = self._code.find_token(last_token, token.STRING)
+
+    # Include @ from decorator
+    if first_token.index > 0:
+      prev = self._code.prev_token(first_token)
+      if util.match_token(prev, token.OP, '@'):
+        first_token = prev
     return (first_token, last_token)
 
-  visit_classdef = handle_doc
-  visit_funcdef = handle_doc
+  visit_classdef = handle_def
+  visit_functiondef = handle_def
 
   def visit_call(self, node, first_token, last_token):
     # A function call isn't over until we see a closing paren. Remember that last_token is at the
@@ -252,6 +262,11 @@ class MarkTokens(object):
     elif isinstance(node.value, six.string_types):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
+
+  # In Python >= 3.6, there is a similar class 'Constant' for literals
+  # In 3.8 it became the type produced by ast.parse
+  # https://bugs.python.org/issue32892
+  visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
     if node.arg is not None:
