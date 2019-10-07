@@ -150,12 +150,19 @@ class MarkTokens(object):
     # By default, we don't need to adjust the token we computed earlier.
     return (first_token, last_token)
 
-  def handle_comp(self, open_brace, node, first_token, last_token):
-    # For list/set/dict comprehensions, we only get the token of the first child, so adjust it to
-    # include the opening brace (the closing brace will be matched automatically).
-    before = self._code.prev_token(first_token)
-    util.expect_token(before, token.OP, open_brace)
-    return (before, last_token)
+  if sys.version_info >= (3, 8):
+    def handle_comp(self, open_brace, node, first_token, last_token):
+      # For list/set/dict comprehensions, we only get the token of the first child, so adjust it to
+      # include the opening brace (the closing brace will be matched automatically).
+      util.expect_token(first_token, token.OP, open_brace)
+      return (first_token, last_token)
+  else:
+    def handle_comp(self, open_brace, node, first_token, last_token):
+      # For list/set/dict comprehensions, we only get the token of the first child, so adjust it to
+      # include the opening brace (the closing brace will be matched automatically).
+      before = self._code.prev_token(first_token)
+      util.expect_token(before, token.OP, open_brace)
+      return (before, last_token)
 
   # Python 3.8 fixed the starting position of list comprehensions:
   # https://bugs.python.org/issue31241
@@ -191,6 +198,11 @@ class MarkTokens(object):
   def handle_def(self, node, first_token, last_token):
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
+    if first_token.index > 0:
+      decorator_op = self._code.prev_token(first_token)
+      if util.match_token(decorator_op, token.OP, '@'):
+        first_token = decorator_op
+
     if not node.body and getattr(node, 'doc', None):
       last_token = self._code.find_token(last_token, token.STRING)
 
@@ -202,6 +214,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   visit_classdef = handle_def
+  visit_funcdef = handle_def
   visit_functiondef = handle_def
 
   def visit_call(self, node, first_token, last_token):
@@ -218,8 +231,8 @@ class MarkTokens(object):
     # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
     return (first_token, self._code.find_token(last_token, token.OP, ']'))
 
-  def visit_tuple(self, node, first_token, last_token):
-    # A tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
+  def handle_bare_tuple(self, node, first_token, last_token):
+    # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
     try:
       maybe_comma = self._code.next_token(last_token)
       if util.match_token(maybe_comma, token.OP, ','):
@@ -227,6 +240,20 @@ class MarkTokens(object):
     except IndexError:
       pass
     return (first_token, last_token)
+
+  if sys.version_info >= (3, 8):
+    def visit_tuple(self, node, first_token, last_token):
+      if not util.match_token(first_token, token.OP, '('):
+        return self.handle_bare_tuple(node, first_token, last_token)
+      return (first_token, last_token)
+  else:
+    # Before python 3.8, parsed tuples do not include parens.
+    def visit_tuple(self, node, first_token, last_token):
+      if first_token.index > 0:
+        maybe_open_paren = self._code.prev_token(first_token)
+        if util.match_token(maybe_open_paren, token.OP, '('):
+          first_token = maybe_open_paren
+      return self.handle_bare_tuple(node, first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
     return self.handle_str(first_token, last_token)
