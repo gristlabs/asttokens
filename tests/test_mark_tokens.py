@@ -520,3 +520,8 @@ bar = ('x y z'   # comment2
                      {"Call:(obj.attribute.get_callback() or default_callback)()"})
     self.assertIn('BoolOp:obj.attribute.get_callback() or default_callback', m.view_nodes_at(8, 5))
     m.verify_all_nodes(self)
+
+  def test_complex_slice_and_parens(self):
+    source = 'f((x)[:, 0])'
+    m = self.create_mark_checker(source)
+    m.verify_all_nodes(self)

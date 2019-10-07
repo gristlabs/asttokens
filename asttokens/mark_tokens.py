@@ -103,22 +103,6 @@ class MarkTokens(object):
       newline = self._code.find_token(start_token, token.ENDMARKER)
     return self._code.prev_token(newline)
 
-  def _iter_non_child_tokens(self, first_token, last_token, node):
-    """
-    Generates all tokens in [first_token, last_token] range that do not belong to any children of
-    node. E.g. `foo(bar)` has children `foo` and `bar`, but we would yield the `(`.
-    """
-    tok = first_token
-    for n in self._iter_children(node):
-      for t in self._code.token_range(tok, self._code.prev_token(n.first_token)):
-        yield t
-      if n.last_token.index >= last_token.index:
-        return
-      tok = self._code.next_token(n.last_token)
-
-    for t in self._code.token_range(tok, last_token):
-      yield t
-
   def _expand_to_matching_pairs(self, first_token, last_token, node):
     """
     Scan tokens in [first_token, last_token] range that are between node's children, and for any
@@ -128,7 +112,7 @@ class MarkTokens(object):
     # child nodes). If we find any closing ones, we match them to the opens.
     to_match_right = []
     to_match_left = []
-    for tok in self._iter_non_child_tokens(first_token, last_token, node):
+    for tok in self._code.token_range(first_token, last_token):
       tok_info = tok[:2]
       if to_match_right and tok_info == to_match_right[-1]:
         to_match_right.pop()
