@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
 import six
 import numbers
 import token
@@ -231,16 +232,23 @@ class MarkTokens(object):
       last = self._code.next_token(last_token)
     return (first_token, last_token)
 
-  def visit_num(self, node, first_token, last_token):
+  def handle_num(self, node, value, first_token, last_token):
     # A constant like '-1' gets turned into two tokens; this will skip the '-'.
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
+
+    # This makes sure that the - is included
+    if value < 0 and first_token.type == token.NUMBER:
+        first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
+
+  def visit_num(self, node, first_token, last_token):
+    return self.handle_num(node, node.n, first_token, last_token)
 
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     if isinstance(node.value, numbers.Number):
-      return self.visit_num(node, first_token, last_token)
+      return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, six.string_types):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
