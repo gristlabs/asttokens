@@ -173,7 +173,9 @@ class MarkTokens(object):
     util.expect_token(before, token.OP, open_brace)
     return (before, last_token)
 
-  if sys.version_info[:2] < (3, 8):
+  # Python 3.8 fixed the starting position of list comprehensions:
+  # https://bugs.python.org/issue31241
+  if sys.version_info < (3, 8):
     def visit_listcomp(self, node, first_token, last_token):
       return self.handle_comp('[', node, first_token, last_token)
 
@@ -202,17 +204,21 @@ class MarkTokens(object):
   visit_assignattr = handle_attr
   visit_delattr = handle_attr
 
-  def visit_functiondef(self, node, first_token, last_token):
+  def handle_def(self, node, first_token, last_token):
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
     if not node.body and getattr(node, 'doc', None):
       last_token = self._code.find_token(last_token, token.STRING)
-    prev = self._code.prev_token(first_token)
-    if prev[:2] == (token.OP, '@'):
-      first_token = prev
+
+    # Include @ from decorator
+    if first_token.index > 0:
+      prev = self._code.prev_token(first_token)
+      if util.match_token(prev, token.OP, '@'):
+        first_token = prev
     return (first_token, last_token)
 
-  visit_classdef = visit_functiondef
+  visit_classdef = handle_def
+  visit_functiondef = handle_def
 
   def visit_call(self, node, first_token, last_token):
     # A function call isn't over until we see a closing paren. Remember that last_token is at the
@@ -266,6 +272,9 @@ class MarkTokens(object):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
+  # In Python >= 3.6, there is a similar class 'Constant' for literals
+  # In 3.8 it became the type produced by ast.parse
+  # https://bugs.python.org/issue32892
   visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
