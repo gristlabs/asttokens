@@ -379,6 +379,13 @@ bar = ('x y z'   # comment2
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
 
+  def test_tuples(self):
+    for s in ["(a),", "((a),)", "(a,),", "((a,),)"]:
+      print(s)
+      m = self.create_mark_checker(s)
+      for n in m.all_nodes:
+        print(n, m.view_node(n))
+
   def test_dict_order(self):
     # Make sure we iterate over dict keys/values in source order.
     # See https://github.com/gristlabs/asttokens/issues/31

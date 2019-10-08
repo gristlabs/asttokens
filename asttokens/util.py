@@ -39,7 +39,7 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
   - [7] .endpos   Ending character offset into the input text.
   """
   def __str__(self):
-    return token_repr(self.type, self.string)
+    return token_repr(self.type, self.string) + ":%s" % self.startpos
 
 
 def match_token(token, tok_type, tok_str=None):
