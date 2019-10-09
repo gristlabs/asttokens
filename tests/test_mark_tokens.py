@@ -385,12 +385,22 @@ bar = ('x y z'   # comment2
       m = self.create_mark_checker(code)
       return [m.atok.get_text(n) for n in m.all_nodes if n.__class__.__name__ == "Tuple"]
 
+    self.assertEqual(get_tuples("a,"), ["a,"])
+    self.assertEqual(get_tuples("(a,)"), ["(a,)"])
     self.assertEqual(get_tuples("(a),"), ["(a),"])
     self.assertEqual(get_tuples("((a),)"), ["((a),)"])
     self.assertEqual(get_tuples("(a,),"), ["(a,),", "(a,)"])
     self.assertEqual(get_tuples("((a,),)"), ["((a,),)", "(a,)"])
+    self.assertEqual(get_tuples("()"), ["()"])
     self.assertEqual(get_tuples("(),"), ["(),", "()"])
     self.assertEqual(get_tuples("((),)"), ["((),)", "()"])
+    self.assertEqual(get_tuples("((),(a,))"), ["((),(a,))", "()", "(a,)"])
+    self.assertEqual(get_tuples("((),(a,),)"), ["((),(a,),)", "()", "(a,)"])
+    self.assertEqual(get_tuples("((),(a,),),"), ["((),(a,),),", "((),(a,),)", "()", "(a,)"])
+    self.assertEqual(get_tuples('((foo, bar),)'), ['((foo, bar),)', '(foo, bar)'])
+    self.assertEqual(get_tuples('(foo, bar),'), ['(foo, bar),', '(foo, bar)'])
+    self.assertEqual(get_tuples('def foo(a=()): ((x, (y,)),) = ((), (a,),),'), [
+      '()', '((x, (y,)),)', '(x, (y,))', '(y,)', '((), (a,),),', '((), (a,),)', '()', '(a,)'])
 
   def test_dict_order(self):
     # Make sure we iterate over dict keys/values in source order.
