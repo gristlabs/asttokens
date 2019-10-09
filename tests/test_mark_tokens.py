@@ -401,6 +401,8 @@ bar = ('x y z'   # comment2
     self.assertEqual(get_tuples('(foo, bar),'), ['(foo, bar),', '(foo, bar)'])
     self.assertEqual(get_tuples('def foo(a=()): ((x, (y,)),) = ((), (a,),),'), [
       '()', '((x, (y,)),)', '(x, (y,))', '(y,)', '((), (a,),),', '((), (a,),)', '()', '(a,)'])
+    self.assertEqual(get_tuples('def foo(a=()): ((x, (y,)),) = [(), [a,],],'), [
+      '()', '((x, (y,)),)', '(x, (y,))', '(y,)', '[(), [a,],],', '()'])
 
   def test_dict_order(self):
     # Make sure we iterate over dict keys/values in source order.
