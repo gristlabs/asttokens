@@ -229,38 +229,39 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   if sys.version_info >= (3, 8):
-    def visit_tuple(self, node, first_token, last_token):
-      try:
-        # Detect if the first token belongs to the first child. The first child may include
-        # extraneous parentheses (which don't create new nodes), so account for those too.
-        first_child = next(self._iter_children(node))
-        child_first, child_last = self._include_parens(first_child)
-        if first_token == child_first:
-          return self.handle_bare_tuple(node, first_token, last_token)
-      except StopIteration:
-        # No first child
-        pass
+    # In Python3.8 parsed tuples include parentheses when present.
+    def handle_tuple_nonempty(self, node, first_token, last_token):
+      # It's a bare tuple if the first token belongs to the first child. The first child may
+      # include extraneous parentheses (which don't create new nodes), so account for those too.
+      child = next(self._iter_children(node))
+      child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
+      if first_token == child_first:
+        return self.handle_bare_tuple(node, first_token, last_token)
       return (first_token, last_token)
   else:
     # Before python 3.8, parsed tuples do not include parens.
-    def visit_tuple(self, node, first_token, last_token):
-      if first_token.index > 0:
-        maybe_open_paren = self._code.prev_token(first_token)
-        if util.match_token(maybe_open_paren, token.OP, '('):
-          first_token = maybe_open_paren
-      return self.handle_bare_tuple(node, first_token, last_token)
+    def handle_tuple_nonempty(self, node, first_token, last_token):
+      (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
+      return self._gobble_parens(first_token, last_token, False)
 
-  def _include_parens(self, node):
-    # Expands a node to include pairs of surrounding parentheses (which don't normally create
-    # new nodes), and returns (first, last) tokens that include these parens.
-    a, b = node.first_token, node.last_token
-    while a.index > 0:
-      prev = self._code.prev_token(a)
-      next = self._code.next_token(b)
+  def visit_tuple(self, node, first_token, last_token):
+    if not node.elts:
+      # An empty tuple is just "()", and we need no further info.
+      return (first_token, last_token)
+    return self.handle_tuple_nonempty(node, first_token, last_token)
+
+  def _gobble_parens(self, first_token, last_token, include_all=False):
+    # Expands a range of tokens to include one or all pairs of surrounding parentheses, and
+    # returns (first, last) tokens that include these parens.
+    while first_token.index > 0:
+      prev = self._code.prev_token(first_token)
+      next = self._code.next_token(last_token)
       if not (util.match_token(prev, token.OP, '(') and util.match_token(next, token.OP, ')')):
         break
-      a, b = prev, next
-    return (a, b)
+      if not include_all:
+        return (prev, next)
+      first_token, last_token = prev, next
+    return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
     return self.handle_str(first_token, last_token)
