@@ -230,21 +230,20 @@ class MarkTokens(object):
 
   if sys.version_info >= (3, 8):
     def visit_tuple(self, node, first_token, last_token):
-      a = (first_token, last_token)
-      if not util.match_token(first_token, token.OP, '('):
-        (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
-      else:
-        # Detect if the paren belongs to the first child
+      try:
+        # Detect if the first token belongs to the first child. The first child may include
+        # extraneous parentheses (which don't create new nodes), so account for those too.
         first_child = next(self._iter_children(node))
         child_first, child_last = self._include_parens(first_child)
         if first_token == child_first:
-          (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
-
+          return self.handle_bare_tuple(node, first_token, last_token)
+      except StopIteration:
+        # No first child
+        pass
       return (first_token, last_token)
   else:
     # Before python 3.8, parsed tuples do not include parens.
     def visit_tuple(self, node, first_token, last_token):
-      a = (first_token, last_token)
       if first_token.index > 0:
         maybe_open_paren = self._code.prev_token(first_token)
         if util.match_token(maybe_open_paren, token.OP, '('):

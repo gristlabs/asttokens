@@ -380,11 +380,16 @@ bar = ('x y z'   # comment2
       m.verify_all_nodes(self)
 
   def test_tuples(self):
-    for s in ["(a),", "((a),)", "(a,),", "((a,),)"]:
-      print(s)
-      m = self.create_mark_checker(s)
-      for n in m.all_nodes:
-        print(n, m.view_node(n))
+    def get_tuples(code):
+      m = self.create_mark_checker(code)
+      return [m.atok.get_text(n) for n in m.all_nodes if n.__class__.__name__ == "Tuple"]
+
+    self.assertEqual(get_tuples("(a),"), ["(a),"])
+    self.assertEqual(get_tuples("((a),)"), ["((a),)"])
+    self.assertEqual(get_tuples("(a,),"), ["(a,),", "(a,)"])
+    self.assertEqual(get_tuples("((a,),)"), ["((a,),)", "(a,)"])
+    self.assertEqual(get_tuples("(),"), ["(),", "()"])
+    self.assertEqual(get_tuples("((),)"), ["((),)", "()"])
 
   def test_dict_order(self):
     # Make sure we iterate over dict keys/values in source order.
