@@ -256,11 +256,11 @@ class MarkTokens(object):
     while first_token.index > 0:
       prev = self._code.prev_token(first_token)
       next = self._code.next_token(last_token)
-      if not (util.match_token(prev, token.OP, '(') and util.match_token(next, token.OP, ')')):
-        break
-      if not include_all:
-        return (prev, next)
-      first_token, last_token = prev, next
+      if util.match_token(prev, token.OP, '(') and util.match_token(next, token.OP, ')'):
+        first_token, last_token = prev, next
+        if include_all:
+          continue
+      break
     return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
