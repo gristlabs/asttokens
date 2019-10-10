@@ -233,7 +233,7 @@ class MarkTokens(object):
     def handle_tuple_nonempty(self, node, first_token, last_token):
       # It's a bare tuple if the first token belongs to the first child. The first child may
       # include extraneous parentheses (which don't create new nodes), so account for those too.
-      child = next(self._iter_children(node))
+      child = node.elts[0]
       child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
       if first_token == child_first:
         return self.handle_bare_tuple(node, first_token, last_token)
