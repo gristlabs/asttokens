@@ -212,6 +212,12 @@ class MarkTokens(object):
     call_start = self._code.find_token(first_child.last_token, token.OP, '(')
     if call_start.index > last_token.index:
       last_token = call_start
+
+    # Handling a python bug with decorators with empty parens, e.g.
+    # @deco()
+    # def ...
+    if util.match_token(first_token, token.OP, '@'):
+      first_token = self._code.next_token(first_token)
     return (first_token, last_token)
 
   def visit_subscript(self, node, first_token, last_token):
