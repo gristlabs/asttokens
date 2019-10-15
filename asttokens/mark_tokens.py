@@ -281,6 +281,9 @@ class MarkTokens(object):
   def visit_joinedstr(self, node, first_token, last_token):
     return self.handle_str(first_token, last_token)
 
+  def visit_bytes(self, node, first_token, last_token):
+    return self.handle_str(first_token, last_token)
+
   def handle_str(self, first_token, last_token):
     # Multiple adjacent STRING tokens form a single string.
     last = self._code.next_token(last_token)
@@ -306,7 +309,7 @@ class MarkTokens(object):
   def visit_const(self, node, first_token, last_token):
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
-    elif isinstance(node.value, six.string_types):
+    elif isinstance(node.value, (six.text_type, six.binary_type)):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
