@@ -580,3 +580,7 @@ bar = ('x y z'   # comment2
       source = source.replace('elif', 'if')
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
+
+  def test_dict_merge(self):
+    m = self.create_mark_checker("{**{}}")
+    m.verify_all_nodes(self)
