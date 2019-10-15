@@ -218,14 +218,49 @@ class MarkTokens(object):
     # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
     return (first_token, self._code.find_token(last_token, token.OP, ']'))
 
-  def visit_tuple(self, node, first_token, last_token):
-    # A tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
+  def handle_bare_tuple(self, node, first_token, last_token):
+    # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
     try:
       maybe_comma = self._code.next_token(last_token)
       if util.match_token(maybe_comma, token.OP, ','):
         last_token = maybe_comma
     except IndexError:
       pass
+    return (first_token, last_token)
+
+  if sys.version_info >= (3, 8):
+    # In Python3.8 parsed tuples include parentheses when present.
+    def handle_tuple_nonempty(self, node, first_token, last_token):
+      # It's a bare tuple if the first token belongs to the first child. The first child may
+      # include extraneous parentheses (which don't create new nodes), so account for those too.
+      child = node.elts[0]
+      child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
+      if first_token == child_first:
+        return self.handle_bare_tuple(node, first_token, last_token)
+      return (first_token, last_token)
+  else:
+    # Before python 3.8, parsed tuples do not include parens.
+    def handle_tuple_nonempty(self, node, first_token, last_token):
+      (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
+      return self._gobble_parens(first_token, last_token, False)
+
+  def visit_tuple(self, node, first_token, last_token):
+    if not node.elts:
+      # An empty tuple is just "()", and we need no further info.
+      return (first_token, last_token)
+    return self.handle_tuple_nonempty(node, first_token, last_token)
+
+  def _gobble_parens(self, first_token, last_token, include_all=False):
+    # Expands a range of tokens to include one or all pairs of surrounding parentheses, and
+    # returns (first, last) tokens that include these parens.
+    while first_token.index > 0:
+      prev = self._code.prev_token(first_token)
+      next = self._code.next_token(last_token)
+      if util.match_token(prev, token.OP, '(') and util.match_token(next, token.OP, ')'):
+        first_token, last_token = prev, next
+        if include_all:
+          continue
+      break
     return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):

@@ -98,8 +98,8 @@ b +     # line3
       # All other expressions preserve newlines and comments but are parenthesized.
       'b +     # line3\n  c',
       'b +     # line3\n  c +   # line4\n  d',
-      'a,      # line2\nb +     # line3\n  c +   # line4\n  d',
     })
+    self.assertIn('Tuple:' + source, m.view_nodes_at(1, 0))
 
 
   def verify_fixture_file(self, path):
@@ -202,8 +202,9 @@ b +     # line3
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
     source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::, :])"
     m = self.create_mark_checker(source)
+    self.assertIn("Tuple:" + source, m.view_nodes_at(1, 0))
     self.assertEqual(m.view_nodes_at(1, 1),
-                     { "Attribute:foo.Area_Code", "Name:foo", "Tuple:"+source[1:-1] })
+                     { "Attribute:foo.Area_Code", "Name:foo" })
     self.assertEqual(m.view_nodes_at(1, 16),
                      { "Subscript:str(foo.Phone)[:3]", "Call:str(foo.Phone)", "Name:str"})
     self.assertEqual(m.view_nodes_at(1, 36),
@@ -378,6 +379,30 @@ bar = ('x y z'   # comment2
       "{h:1,i:2,}"):
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
+
+  def test_tuples(self):
+    def get_tuples(code):
+      m = self.create_mark_checker(code)
+      return [m.atok.get_text(n) for n in m.all_nodes if n.__class__.__name__ == "Tuple"]
+
+    self.assertEqual(get_tuples("a,"), ["a,"])
+    self.assertEqual(get_tuples("(a,)"), ["(a,)"])
+    self.assertEqual(get_tuples("(a),"), ["(a),"])
+    self.assertEqual(get_tuples("((a),)"), ["((a),)"])
+    self.assertEqual(get_tuples("(a,),"), ["(a,),", "(a,)"])
+    self.assertEqual(get_tuples("((a,),)"), ["((a,),)", "(a,)"])
+    self.assertEqual(get_tuples("()"), ["()"])
+    self.assertEqual(get_tuples("(),"), ["(),", "()"])
+    self.assertEqual(get_tuples("((),)"), ["((),)", "()"])
+    self.assertEqual(get_tuples("((),(a,))"), ["((),(a,))", "()", "(a,)"])
+    self.assertEqual(get_tuples("((),(a,),)"), ["((),(a,),)", "()", "(a,)"])
+    self.assertEqual(get_tuples("((),(a,),),"), ["((),(a,),),", "((),(a,),)", "()", "(a,)"])
+    self.assertEqual(get_tuples('((foo, bar),)'), ['((foo, bar),)', '(foo, bar)'])
+    self.assertEqual(get_tuples('(foo, bar),'), ['(foo, bar),', '(foo, bar)'])
+    self.assertEqual(get_tuples('def foo(a=()): ((x, (y,)),) = ((), (a,),),'), [
+      '()', '((x, (y,)),)', '(x, (y,))', '(y,)', '((), (a,),),', '((), (a,),)', '()', '(a,)'])
+    self.assertEqual(get_tuples('def foo(a=()): ((x, (y,)),) = [(), [a,],],'), [
+      '()', '((x, (y,)),)', '(x, (y,))', '(y,)', '[(), [a,],],', '()'])
 
   def test_dict_order(self):
     # Make sure we iterate over dict keys/values in source order.
