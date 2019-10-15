@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
-import astroid
-import six
+
+import inspect
+import io
+import os
 import sys
-import token
 import textwrap
 import unittest
+
+import astroid
+import six
+
 from . import tools
 
 
@@ -473,6 +478,10 @@ bar = ('x y z'   # comment2
       @deco2(a=1)
       def g(x):
         pass
+
+      @deco3()
+      def g(x):
+        pass
     """)
     m = self.create_mark_checker(source)
     m.verify_all_nodes(self)
@@ -550,3 +559,21 @@ bar = ('x y z'   # comment2
     source = 'f((x)[:, 0])'
     m = self.create_mark_checker(source)
     m.verify_all_nodes(self)
+
+  def test_sys_modules(self):
+    for module in list(sys.modules.values()):
+      try:
+        filename = inspect.getsourcefile(module)
+      except TypeError:
+        continue
+
+      if not filename:
+        continue
+
+      filename = os.path.abspath(filename)
+      print(filename)
+      with io.open(filename) as f:
+        source = f.read()
+      source = source.replace('elif', 'if')
+      m = self.create_mark_checker(source)
+      m.verify_all_nodes(self)
