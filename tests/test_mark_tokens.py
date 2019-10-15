@@ -575,8 +575,11 @@ bar = ('x y z'   # comment2
 
       filename = os.path.abspath(filename)
       print(filename)
-      with io.open(filename) as f:
-        source = f.read()
+      try:
+        with io.open(filename) as f:
+          source = f.read()
+      except OSError:
+        continue
       source = source.replace('elif', 'if')
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
