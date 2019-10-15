@@ -145,6 +145,13 @@ class MarkChecker(object):
         continue
 
       text = self.atok.get_text(node)
+
+      # `elif:` is really just `else: if:` to the AST,
+      # so get_text can return text starting with elif when given an If node.
+      # This is generally harmless and there's probably no good alternative,
+      # but in isolation it's invalid syntax
+      text = re.sub(r'^(\s*)elif(\W)', r'\1if\2', text, re.MULTILINE)
+
       rebuilt_node = parse_snippet(text, is_expr=util.is_expr(node), is_module=util.is_module(node))
 
       # Now we need to check if the two nodes are equivalent.

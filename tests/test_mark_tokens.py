@@ -580,7 +580,6 @@ bar = ('x y z'   # comment2
           source = f.read()
       except OSError:
         continue
-      source = source.replace('elif', 'if')
       m = self.create_mark_checker(source)
       m.verify_all_nodes(self)
 
