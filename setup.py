@@ -17,7 +17,7 @@ with io.open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
   name='asttokens',
-  version='1.1.15',
+  version='2.0.0',
   description='Annotate AST trees with source code positions',
   long_description=long_description,
   url='https://github.com/gristlabs/asttokens',
