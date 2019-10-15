@@ -588,6 +588,7 @@ bar = ('x y z'   # comment2
 
       m.verify_all_nodes(self)
 
-  def test_dict_merge(self):
-    m = self.create_mark_checker("{**{}}")
-    m.verify_all_nodes(self)
+  if six.PY3:
+    def test_dict_merge(self):
+      m = self.create_mark_checker("{**{}}")
+      m.verify_all_nodes(self)
