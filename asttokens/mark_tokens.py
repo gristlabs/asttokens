@@ -204,14 +204,20 @@ class MarkTokens(object):
   visit_classdef = handle_def
   visit_functiondef = handle_def
 
-  def visit_call(self, node, first_token, last_token):
-    # A function call isn't over until we see a closing paren. Remember that last_token is at the
-    # end of all children, so we are not worried about encountering a paren that belongs to a
-    # child.
+  def handle_following_brackets(self, node, last_token, opening_bracket):
+    # This is for calls and subscripts, which have a pair of brackets
+    # of the end which may contain no nodes, e.g. foo() or bar[:].
+    # We look for the opening bracket and then let the matching pair be found automatically
+    # Remember that last_token is at the end of all children,
+    # so we are not worried about encountering a bracket that belongs to a child.
     first_child = next(self._iter_children(node))
-    call_start = self._code.find_token(first_child.last_token, token.OP, '(')
+    call_start = self._code.find_token(first_child.last_token, token.OP, opening_bracket)
     if call_start.index > last_token.index:
       last_token = call_start
+    return last_token
+
+  def visit_call(self, node, first_token, last_token):
+    last_token = self.handle_following_brackets(node, last_token, '(')
 
     # Handling a python bug with decorators with empty parens, e.g.
     # @deco()
@@ -221,8 +227,8 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_subscript(self, node, first_token, last_token):
-    # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
-    return (first_token, self._code.find_token(last_token, token.OP, ']'))
+    last_token = self.handle_following_brackets(node, last_token, '[')
+    return (first_token, last_token)
 
   def handle_bare_tuple(self, node, first_token, last_token):
     # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
