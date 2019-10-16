@@ -346,3 +346,16 @@ class MarkTokens(object):
     def visit_with(self, node, first_token, last_token):
       first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
       return (first, last_token)
+
+  def handle_async(self, node, first_token, last_token):
+    if not util.match_token(first_token, token.ASYNC, 'async'):
+      first_token = self._code.prev_token(first_token)
+    return (first_token, last_token)
+
+  visit_asyncfor = handle_async
+  visit_asyncwith = handle_async
+
+  def visit_asyncfunctiondef(self, node, first_token, last_token):
+    if util.match_token(first_token, token.NAME, 'def'):
+      first_token = self._code.prev_token(first_token)
+    return self.visit_functiondef(node, first_token, last_token)
