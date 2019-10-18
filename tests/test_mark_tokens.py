@@ -587,10 +587,6 @@ bar = ('x y z'   # comment2
         continue
       m = self.create_mark_checker(source)
 
-      # Astroid has at least two weird bugs involving metaclasses
-      if self.is_astroid_test and 'metaclass=' in m.atok.tree.as_string():
-        continue
-
       m.verify_all_nodes(self)
 
   if six.PY3:
