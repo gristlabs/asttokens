@@ -79,18 +79,6 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(atok.find_token(atok.tokens[5], tokenize.NL), atok.tokens[9])
     self.assertTrue(token.ISEOF(atok.find_token(atok.tokens[5], tokenize.NL).type))
 
-
-  def test_to_source(self):
-    # Verify that to_source() actually works, with a couple of cases that have caused hiccups.
-    source = "foo(a, b, *d, c=2, **e)"
-    root = ast.parse(source)
-    self.assertEqual(tools.to_source(root.body[0]), source)
-
-    source = 'def foo():\n    """xxx"""\n    None'
-    root = ast.parse(source).body[0]
-    self.assertEqual(tools.to_source(root).strip(), source)
-
-
   def test_unicode_offsets(self):
     # ast modules provides utf8 offsets, while tokenize uses unicode offsets. Make sure we
     # translate correctly.

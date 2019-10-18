@@ -1,25 +1,30 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 
+import ast
 import inspect
 import io
 import os
+import re
 import sys
 import textwrap
 import unittest
 
 import astroid
 import six
+from asttokens import util
 
 from . import tools
 
 
 class TestMarkTokens(unittest.TestCase):
+  maxDiff = None
 
   # We use the same test cases to test both nodes produced by the built-in `ast` module, and by
   # the `astroid` library. The latter derives TestAstroid class from TestMarkTokens. For checks
   # that differ between them, .is_astroid_test allows to distinguish.
   is_astroid_test = False
+  module = ast
 
   @classmethod
   def create_mark_checker(cls, source):
@@ -592,3 +597,39 @@ bar = ('x y z'   # comment2
     def test_dict_merge(self):
       m = self.create_mark_checker("{**{}}")
       m.verify_all_nodes(self)
+
+  def parse_snippet(self, text, node):
+    """
+    Returns the parsed AST tree for the given text, handling issues with indentation and newlines
+    when text is really an extracted part of larger code.
+    """
+    # If text is indented, it's a statement, and we need to put in a scope for indents to be valid
+    # (using textwrap.dedent is insufficient because some lines may not indented, e.g. comments or
+    # multiline strings). If text is an expression but has newlines, we parenthesize it to make it
+    # parsable.
+    indented = re.match(r'^[ \t]+\S', text)
+    if indented:
+      return self.module.parse('def dummy():\n' + text).body[0].body[0]
+    if util.is_expr(node):
+      return self.module.parse('_\n(' + text + ')').body[1].value
+    if util.is_module(node):
+      return self.module.parse(text)
+    return self.module.parse('_\n' + text).body[1]
+
+  def assert_nodes_equal(self, t1, t2):
+    if isinstance(t1, ast.expr_context):
+      self.assertIsInstance(t2, ast.expr_context)
+    elif isinstance(t1, list):
+      self.assertEqual(len(t1), len(t2))
+      for vc1, vc2 in zip(t1, t2):
+        self.assert_nodes_equal(vc1, vc2)
+    elif isinstance(t1, ast.AST):
+      self.assertEqual(type(t1), type(t2))
+      c1 = list(ast.iter_fields(t1))
+      c2 = list(ast.iter_fields(t2))
+      self.assertEqual(len(c1), len(c2))
+      for (n1, v1), (n2, v2) in zip(c1, c2):
+        self.assertEqual(n1, n2)
+        self.assert_nodes_equal(v1, v2)
+    else:
+      self.assertEqual(t1, t2)
