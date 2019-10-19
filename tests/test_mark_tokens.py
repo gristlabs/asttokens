@@ -210,7 +210,7 @@ b +     # line3
 
   def test_slices(self):
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
-    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::, :], [a[:]][::])"
+    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], [a[:]][::-1])"
     m = self.create_mark_checker(source)
     m.verify_all_nodes(self)
     self.assertIn("Tuple:" + source, m.view_nodes_at(1, 0))
@@ -225,7 +225,7 @@ b +     # line3
     self.assertEqual({n for n in m.view_nodes_at(1, 56) if 'Slice:' not in n},
                      { "Subscript:foo[:]", "Name:foo" })
     self.assertEqual({n for n in m.view_nodes_at(1, 64) if 'Slice:' not in n},
-                     { "Subscript:bar[::, :]", "Name:bar" })
+                     { "Subscript:bar[::2, :]", "Name:bar" })
 
   def test_adjacent_strings(self):
     source = """
