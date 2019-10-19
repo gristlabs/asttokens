@@ -620,17 +620,15 @@ bar = ('x y z'   # comment2
       # Ignore the context of each node which can change when parsing
       # substrings of source code. We just want equal structure and contents.
       self.assertIsInstance(t2, ast.expr_context)
-    elif isinstance(t1, list):
+    elif isinstance(t1, (list, tuple)):
+      self.assertEqual(type(t1), type(t2))
       self.assertEqual(len(t1), len(t2))
       for vc1, vc2 in zip(t1, t2):
         self.assert_nodes_equal(vc1, vc2)
     elif isinstance(t1, ast.AST):
-      self.assertEqual(type(t1), type(t2))
-      c1 = list(ast.iter_fields(t1))
-      c2 = list(ast.iter_fields(t2))
-      self.assertEqual(len(c1), len(c2))
-      for (n1, v1), (n2, v2) in zip(c1, c2):
-        self.assertEqual(n1, n2)
-        self.assert_nodes_equal(v1, v2)
+      self.assert_nodes_equal(
+        list(ast.iter_fields(t1)),
+        list(ast.iter_fields(t2)),
+      )
     else:
       self.assertEqual(t1, t2)
