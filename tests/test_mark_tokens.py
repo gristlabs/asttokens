@@ -635,6 +635,13 @@ bar = ('x y z'   # comment2
     check('a *= 1', 'a += 1')
     check('[a for a in []]', '[a for a in ()]')
     check("for x in y: pass", "for x in y: fail")
+    check("1", "1.0")
+    check("foo(a, b, *d, c=2, **e)",
+          "foo(a, b, *d, c=2.0, **e)")
+    check("foo(a, b, *d, c=2, **e)",
+          "foo(a, b, *d, c=2)")
+    check('def foo():\n    """xxx"""\n    None',
+          'def foo():\n    """xx"""\n    None')
 
   def assert_nodes_equal(self, t1, t2):
     if isinstance(t1, ast.expr_context):
