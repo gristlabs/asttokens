@@ -603,6 +603,9 @@ bar = ('x y z'   # comment2
     # (using textwrap.dedent is insufficient because some lines may not indented, e.g. comments or
     # multiline strings). If text is an expression but has newlines, we parenthesize it to make it
     # parsable.
+    # For expressions and statements, we add a dummy statement '_' before it because if it's just a
+    # string contained in an astroid.Const or astroid.Expr it will end up in the doc attribute and be
+    # a pain to extract for comparison
     indented = re.match(r'^[ \t]+\S', text)
     if indented:
       return self.module.parse('def dummy():\n' + text).body[0].body[0]
@@ -614,6 +617,8 @@ bar = ('x y z'   # comment2
 
   def assert_nodes_equal(self, t1, t2):
     if isinstance(t1, ast.expr_context):
+      # Ignore the context of each node which can change when parsing
+      # substrings of source code. We just want equal structure and contents.
       self.assertIsInstance(t2, ast.expr_context)
     elif isinstance(t1, list):
       self.assertEqual(len(t1), len(t2))

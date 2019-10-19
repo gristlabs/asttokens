@@ -26,9 +26,20 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
 
 
 def repr_tree(node):
+  """
+  Returns a canonical string representation of an astroid node
+  normalised to ignore the context of each node which can change when parsing
+  substrings of source code.
+
+  E.g. "a" is a Name in expression "a + 1" and is an AssignName in expression "a = 1",
+  but we don't care about this difference when comparing structure and content.
+  """
   result = node.repr_tree()
-  result = result.replace('AssignName(name=', 'Name(name=')
-  result = result.replace('DelName(name=', 'Name(name=')
+
+  # astroid represents context in multiple ways
+  # Convert Store and Del contexts to Load
+  # Similarly convert Assign/Del Name/Attr to just Name/Attribute (i.e. Load)
+  result = re.sub(r'(AssignName|DelName)(\(\s*name=)', r'Name\2', result)
   result = re.sub(r'(AssignAttr|DelAttr)(\(\s*attrname=)', r'Attribute\2', result)
   result = re.sub(r'ctx=<Context\.(Store: 2|Del: 3)>', r'ctx=<Context.Load: 1>', result)
 
