@@ -634,7 +634,6 @@ bar = ('x y z'   # comment2
     check('a = 1', 'a += 1')
     check('a *= 1', 'a += 1')
     check('[a for a in []]', '[a for a in ()]')
-    check('"a"', 'f"a"')
     check("for x in y: pass", "for x in y: fail")
 
   def assert_nodes_equal(self, t1, t2):
