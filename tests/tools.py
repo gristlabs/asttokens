@@ -146,6 +146,11 @@ class MarkChecker(object):
 
       text = self.atok.get_text(node)
 
+      # await is not allowed outside async functions below 3.7
+      # parsing again would give a syntax error
+      if 'await' in text and 'async def' not in text and sys.version_info < (3, 7):
+        continue
+
       # `elif:` is really just `else: if:` to the AST,
       # so get_text can return text starting with elif when given an If node.
       # This is generally harmless and there's probably no good alternative,
