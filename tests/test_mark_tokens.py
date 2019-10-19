@@ -615,13 +615,37 @@ bar = ('x y z'   # comment2
       return self.module.parse(text)
     return self.module.parse('_\n' + text).body[1]
 
+  def test_assert_nodes_equal(self):
+    """
+    Checks that assert_nodes_equal actually fails when given different nodes
+    """
+
+    def check(s1, s2):
+      n1 = self.module.parse(s1)
+      n2 = self.module.parse(s2)
+      with self.assertRaises(AssertionError):
+        self.assert_nodes_equal(n1, n2)
+
+    check('a', 'b')
+    check('a*b', 'a+b')
+    check('a*b', 'b*a')
+    check('(a and b) or c', 'a and (b or c)')
+    check('a = 1', 'a = 2')
+    check('a = 1', 'a += 1')
+    check('a *= 1', 'a += 1')
+    check('[a for a in []]', '[a for a in ()]')
+    check('"a"', 'f"a"')
+    check("for x in y: pass", "for x in y: fail")
+
   def assert_nodes_equal(self, t1, t2):
     if isinstance(t1, ast.expr_context):
       # Ignore the context of each node which can change when parsing
       # substrings of source code. We just want equal structure and contents.
       self.assertIsInstance(t2, ast.expr_context)
-    elif isinstance(t1, (list, tuple)):
-      self.assertEqual(type(t1), type(t2))
+      return
+
+    self.assertEqual(type(t1), type(t2))
+    if isinstance(t1, (list, tuple)):
       self.assertEqual(len(t1), len(t2))
       for vc1, vc2 in zip(t1, t2):
         self.assert_nodes_equal(vc1, vc2)
