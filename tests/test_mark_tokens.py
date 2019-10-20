@@ -1,25 +1,30 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 
+import ast
 import inspect
 import io
 import os
+import re
 import sys
 import textwrap
 import unittest
 
 import astroid
 import six
+from asttokens import util
 
 from . import tools
 
 
 class TestMarkTokens(unittest.TestCase):
+  maxDiff = None
 
   # We use the same test cases to test both nodes produced by the built-in `ast` module, and by
   # the `astroid` library. The latter derives TestAstroid class from TestMarkTokens. For checks
   # that differ between them, .is_astroid_test allows to distinguish.
   is_astroid_test = False
+  module = ast
 
   @classmethod
   def create_mark_checker(cls, source):
@@ -582,13 +587,78 @@ bar = ('x y z'   # comment2
         continue
       m = self.create_mark_checker(source)
 
-      # Astroid has at least two weird bugs involving metaclasses
-      if self.is_astroid_test and 'metaclass=' in m.atok.tree.as_string():
-        continue
-
       m.verify_all_nodes(self)
 
   if six.PY3:
     def test_dict_merge(self):
       m = self.create_mark_checker("{**{}}")
       m.verify_all_nodes(self)
+
+  def parse_snippet(self, text, node):
+    """
+    Returns the parsed AST tree for the given text, handling issues with indentation and newlines
+    when text is really an extracted part of larger code.
+    """
+    # If text is indented, it's a statement, and we need to put in a scope for indents to be valid
+    # (using textwrap.dedent is insufficient because some lines may not indented, e.g. comments or
+    # multiline strings). If text is an expression but has newlines, we parenthesize it to make it
+    # parsable.
+    # For expressions and statements, we add a dummy statement '_' before it because if it's just a
+    # string contained in an astroid.Const or astroid.Expr it will end up in the doc attribute and be
+    # a pain to extract for comparison
+    indented = re.match(r'^[ \t]+\S', text)
+    if indented:
+      return self.module.parse('def dummy():\n' + text).body[0].body[0]
+    if util.is_expr(node):
+      return self.module.parse('_\n(' + text + ')').body[1].value
+    if util.is_module(node):
+      return self.module.parse(text)
+    return self.module.parse('_\n' + text).body[1]
+
+  def test_assert_nodes_equal(self):
+    """
+    Checks that assert_nodes_equal actually fails when given different nodes
+    """
+
+    def check(s1, s2):
+      n1 = self.module.parse(s1)
+      n2 = self.module.parse(s2)
+      with self.assertRaises(AssertionError):
+        self.assert_nodes_equal(n1, n2)
+
+    check('a', 'b')
+    check('a*b', 'a+b')
+    check('a*b', 'b*a')
+    check('(a and b) or c', 'a and (b or c)')
+    check('a = 1', 'a = 2')
+    check('a = 1', 'a += 1')
+    check('a *= 1', 'a += 1')
+    check('[a for a in []]', '[a for a in ()]')
+    check("for x in y: pass", "for x in y: fail")
+    check("1", "1.0")
+    check("foo(a, b, *d, c=2, **e)",
+          "foo(a, b, *d, c=2.0, **e)")
+    check("foo(a, b, *d, c=2, **e)",
+          "foo(a, b, *d, c=2)")
+    check('def foo():\n    """xxx"""\n    None',
+          'def foo():\n    """xx"""\n    None')
+
+  def assert_nodes_equal(self, t1, t2):
+    if isinstance(t1, ast.expr_context):
+      # Ignore the context of each node which can change when parsing
+      # substrings of source code. We just want equal structure and contents.
+      self.assertIsInstance(t2, ast.expr_context)
+      return
+
+    self.assertEqual(type(t1), type(t2))
+    if isinstance(t1, (list, tuple)):
+      self.assertEqual(len(t1), len(t2))
+      for vc1, vc2 in zip(t1, t2):
+        self.assert_nodes_equal(vc1, vc2)
+    elif isinstance(t1, ast.AST):
+      self.assert_nodes_equal(
+        list(ast.iter_fields(t1)),
+        list(ast.iter_fields(t2)),
+      )
+    else:
+      self.assertEqual(t1, t2)
