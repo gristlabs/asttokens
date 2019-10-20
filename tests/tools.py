@@ -1,13 +1,13 @@
 from __future__ import unicode_literals, print_function
-import ast
+
 import io
 import os
 import re
 import sys
 
-import astroid
 import asttokens
 from asttokens import util
+
 
 def get_fixture_path(*path_parts):
   python_dir = 'python%s' % sys.version_info[0]

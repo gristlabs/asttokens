@@ -539,6 +539,28 @@ bar = ('x y z'   # comment2
       # This verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
       m.verify_all_nodes(self)
 
+  def test_one_line_if_elif(self):
+    source = """
+if 1: a
+elif 2: b
+    """
+    m = self.create_mark_checker(source)
+    m.verify_all_nodes(self)
+
+  def test_complex_numbers(self):
+    source = """
+1
+-1
+j  # not a complex number, just a name
+1j
+-1j
+1+2j
+3-4j
+1j-1j-1j-1j
+    """
+    m = self.create_mark_checker(source)
+    m.verify_all_nodes(self)
+
   def test_parens_around_func(self):
     source = textwrap.dedent(
       '''
@@ -568,26 +590,27 @@ bar = ('x y z'   # comment2
     m = self.create_mark_checker(source)
     m.verify_all_nodes(self)
 
-  def test_sys_modules(self):
-    for module in list(sys.modules.values()):
-      try:
-        filename = inspect.getsourcefile(module)
-      except TypeError:
-        continue
+  if six.PY3:
+    def test_sys_modules(self):
+      for module in list(sys.modules.values()):
+        try:
+          filename = inspect.getsourcefile(module)
+        except TypeError:
+          continue
 
-      if not filename:
-        continue
+        if not filename:
+          continue
 
-      filename = os.path.abspath(filename)
-      print(filename)
-      try:
-        with io.open(filename) as f:
-          source = f.read()
-      except OSError:
-        continue
-      m = self.create_mark_checker(source)
+        filename = os.path.abspath(filename)
+        print(filename)
+        try:
+          with io.open(filename) as f:
+            source = f.read()
+        except OSError:
+          continue
+        m = self.create_mark_checker(source)
 
-      m.verify_all_nodes(self)
+        m.verify_all_nodes(self)
 
   if six.PY3:
     def test_dict_merge(self):

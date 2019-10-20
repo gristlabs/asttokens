@@ -177,6 +177,11 @@ class MarkTokens(object):
     first = self._code.find_token(first_token, token.NAME, 'for', reverse=True)
     return (first, last_token)
 
+  def visit_if(self, node, first_token, last_token):
+    while first_token.string not in ('if', 'elif'):
+      first_token = self._code.prev_token(first_token)
+    return first_token, last_token
+
   def handle_attr(self, node, first_token, last_token):
     # Attribute node has ".attr" (2 tokens) after the last child.
     dot = self._code.find_token(last_token, token.OP, '.')
@@ -298,6 +303,12 @@ class MarkTokens(object):
       last_token = self._code.next_token(last_token)
 
     # This makes sure that the - is included
+    if isinstance(value, complex):
+      # A complex number like -2j cannot be compared directly to 0
+      # A complex number like 1-2j is expressed as a binary operation
+      # so we don't need to worry about it
+      value = value.imag
+
     if value < 0 and first_token.type == token.NUMBER:
         first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
