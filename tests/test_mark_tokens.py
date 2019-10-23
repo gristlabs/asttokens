@@ -698,7 +698,7 @@ j  # not a complex number, just a name
     else:
       # Weird bug in astroid that collapses spaces in docstrings sometimes maybe
       if self.is_astroid_test and isinstance(t1, six.string_types):
-        t1 = re.sub(r'^ +$', '', t1)
-        t2 = re.sub(r'^ +$', '', t2)
+        t1 = re.sub(r'^ +$', '', t1, re.MULTILINE)
+        t2 = re.sub(r'^ +$', '', t2, re.MULTILINE)
 
       self.assertEqual(t1, t2)
