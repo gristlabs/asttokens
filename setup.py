@@ -78,7 +78,6 @@ setup(
   # for example:
   # $ pip install -e .[dev,test]
   extras_require={
-    'test': ['astroid', 'nose', 'coverage'],
+    'test': ['astroid', 'pytest'],
   },
-  test_suite="nose.collector",
 )
