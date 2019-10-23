@@ -177,6 +177,11 @@ class MarkTokens(object):
     first = self._code.find_token(first_token, token.NAME, 'for', reverse=True)
     return (first, last_token)
 
+  def visit_if(self, node, first_token, last_token):
+    while first_token.string not in ('if', 'elif'):
+      first_token = self._code.prev_token(first_token)
+    return first_token, last_token
+
   def handle_attr(self, node, first_token, last_token):
     # Attribute node has ".attr" (2 tokens) after the last child.
     dot = self._code.find_token(last_token, token.OP, '.')
@@ -204,19 +209,31 @@ class MarkTokens(object):
   visit_classdef = handle_def
   visit_functiondef = handle_def
 
-  def visit_call(self, node, first_token, last_token):
-    # A function call isn't over until we see a closing paren. Remember that last_token is at the
-    # end of all children, so we are not worried about encountering a paren that belongs to a
-    # child.
+  def handle_following_brackets(self, node, last_token, opening_bracket):
+    # This is for calls and subscripts, which have a pair of brackets
+    # at the end which may contain no nodes, e.g. foo() or bar[:].
+    # We look for the opening bracket and then let the matching pair be found automatically
+    # Remember that last_token is at the end of all children,
+    # so we are not worried about encountering a bracket that belongs to a child.
     first_child = next(self._iter_children(node))
-    call_start = self._code.find_token(first_child.last_token, token.OP, '(')
+    call_start = self._code.find_token(first_child.last_token, token.OP, opening_bracket)
     if call_start.index > last_token.index:
       last_token = call_start
+    return last_token
+
+  def visit_call(self, node, first_token, last_token):
+    last_token = self.handle_following_brackets(node, last_token, '(')
+
+    # Handling a python bug with decorators with empty parens, e.g.
+    # @deco()
+    # def ...
+    if util.match_token(first_token, token.OP, '@'):
+      first_token = self._code.next_token(first_token)
     return (first_token, last_token)
 
   def visit_subscript(self, node, first_token, last_token):
-    # A subscript operations isn't over until we see a closing bracket. Similar to function calls.
-    return (first_token, self._code.find_token(last_token, token.OP, ']'))
+    last_token = self.handle_following_brackets(node, last_token, '[')
+    return (first_token, last_token)
 
   def handle_bare_tuple(self, node, first_token, last_token):
     # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
@@ -269,6 +286,9 @@ class MarkTokens(object):
   def visit_joinedstr(self, node, first_token, last_token):
     return self.handle_str(first_token, last_token)
 
+  def visit_bytes(self, node, first_token, last_token):
+    return self.handle_str(first_token, last_token)
+
   def handle_str(self, first_token, last_token):
     # Multiple adjacent STRING tokens form a single string.
     last = self._code.next_token(last_token)
@@ -282,6 +302,12 @@ class MarkTokens(object):
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
 
+    if isinstance(value, complex):
+      # A complex number like -2j cannot be compared directly to 0
+      # A complex number like 1-2j is expressed as a binary operation
+      # so we don't need to worry about it
+      value = value.imag
+
     # This makes sure that the - is included
     if value < 0 and first_token.type == token.NUMBER:
         first_token = self._code.prev_token(first_token)
@@ -294,7 +320,7 @@ class MarkTokens(object):
   def visit_const(self, node, first_token, last_token):
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
-    elif isinstance(node.value, six.string_types):
+    elif isinstance(node.value, (six.text_type, six.binary_type)):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
@@ -331,3 +357,21 @@ class MarkTokens(object):
     def visit_with(self, node, first_token, last_token):
       first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
       return (first, last_token)
+
+  # Async nodes should typically start with the word 'async'
+  # but Python < 3.7 doesn't put the col_offset there
+  # AsyncFunctionDef is slightly different because it might have
+  # decorators before that, which visit_functiondef handles
+  def handle_async(self, node, first_token, last_token):
+    if not util.match_token(first_token, token.ASYNC, 'async'):
+      first_token = self._code.prev_token(first_token)
+    return (first_token, last_token)
+
+  visit_asyncfor = handle_async
+  visit_asyncwith = handle_async
+
+  def visit_asyncfunctiondef(self, node, first_token, last_token):
+    if util.match_token(first_token, token.NAME, 'def'):
+      # Include the 'async' token
+      first_token = self._code.prev_token(first_token)
+    return self.visit_functiondef(node, first_token, last_token)

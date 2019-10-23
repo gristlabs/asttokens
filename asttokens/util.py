@@ -107,7 +107,8 @@ def iter_children_ast(node):
     # override the iteration order: instead of <all keys>, <all values>,
     # yield keys and values in source order (key1, value1, key2, value2, ...)
     for (key, value) in zip(node.keys, node.values):
-      yield key
+      if key is not None:
+        yield key
       yield value
     return
 
