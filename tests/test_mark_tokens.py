@@ -608,6 +608,12 @@ j  # not a complex number, just a name
             source = f.read()
         except OSError:
           continue
+
+        # Astroid fails with a syntax error if a type comment is on its own line
+        if self.is_astroid_test and re.search(r'^\s*# type: ', source, re.MULTILINE):
+          print('Skipping', filename)
+          continue
+
         m = self.create_mark_checker(source)
 
         m.verify_all_nodes(self)
