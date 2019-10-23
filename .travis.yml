@@ -16,7 +16,7 @@ install:
   - pip install .[test]
 
 script:
-  - coverage run --include='asttokens/*' -m pytest --disable-warnings tests/*.py
+  - coverage run --include='asttokens/*' -m pytest
   - coverage report -m
 
 after_success:
