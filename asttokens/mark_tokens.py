@@ -211,7 +211,7 @@ class MarkTokens(object):
 
   def handle_following_brackets(self, node, last_token, opening_bracket):
     # This is for calls and subscripts, which have a pair of brackets
-    # of the end which may contain no nodes, e.g. foo() or bar[:].
+    # at the end which may contain no nodes, e.g. foo() or bar[:].
     # We look for the opening bracket and then let the matching pair be found automatically
     # Remember that last_token is at the end of all children,
     # so we are not worried about encountering a bracket that belongs to a child.
@@ -302,13 +302,13 @@ class MarkTokens(object):
     while util.match_token(last_token, token.OP):
       last_token = self._code.next_token(last_token)
 
-    # This makes sure that the - is included
     if isinstance(value, complex):
       # A complex number like -2j cannot be compared directly to 0
       # A complex number like 1-2j is expressed as a binary operation
       # so we don't need to worry about it
       value = value.imag
 
+    # This makes sure that the - is included
     if value < 0 and first_token.type == token.NUMBER:
         first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
@@ -358,6 +358,10 @@ class MarkTokens(object):
       first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
       return (first, last_token)
 
+  # Async nodes should typically start with the word 'async'
+  # but Python < 3.7 doesn't put the col_offset there
+  # AsyncFunctionDef is slightly different because it might have
+  # decorators before that, which visit_functiondef handles
   def handle_async(self, node, first_token, last_token):
     if not util.match_token(first_token, token.ASYNC, 'async'):
       first_token = self._code.prev_token(first_token)
@@ -368,5 +372,6 @@ class MarkTokens(object):
 
   def visit_asyncfunctiondef(self, node, first_token, last_token):
     if util.match_token(first_token, token.NAME, 'def'):
+      # Include the 'async' token
       first_token = self._code.prev_token(first_token)
     return self.visit_functiondef(node, first_token, last_token)
