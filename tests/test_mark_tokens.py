@@ -672,22 +672,33 @@ j  # not a complex number, just a name
     check('def foo():\n    """xxx"""\n    None',
           'def foo():\n    """xx"""\n    None')
 
-  def assert_nodes_equal(self, t1, t2):
-    if isinstance(t1, ast.expr_context):
-      # Ignore the context of each node which can change when parsing
-      # substrings of source code. We just want equal structure and contents.
-      self.assertIsInstance(t2, ast.expr_context)
-      return
+  nodes_classes = ast.AST
+  context_classes = [ast.expr_context]
+  iter_fields = staticmethod(ast.iter_fields)
 
-    self.assertEqual(type(t1), type(t2))
+  def assert_nodes_equal(self, t1, t2):
+    # Ignore the context of each node which can change when parsing
+    # substrings of source code. We just want equal structure and contents.
+    for context_classes_group in self.context_classes:
+      if isinstance(t1, context_classes_group):
+        self.assertIsInstance(t2, context_classes_group)
+        break
+    else:
+      self.assertEqual(type(t1), type(t2))
+
     if isinstance(t1, (list, tuple)):
       self.assertEqual(len(t1), len(t2))
       for vc1, vc2 in zip(t1, t2):
         self.assert_nodes_equal(vc1, vc2)
-    elif isinstance(t1, ast.AST):
+    elif isinstance(t1, self.nodes_classes):
       self.assert_nodes_equal(
-        list(ast.iter_fields(t1)),
-        list(ast.iter_fields(t2)),
+        list(self.iter_fields(t1)),
+        list(self.iter_fields(t2)),
       )
     else:
+      # Weird bug in astroid that collapses spaces in docstrings sometimes maybe
+      if self.is_astroid_test and isinstance(t1, six.string_types):
+        t1 = re.sub(r'^ +$', '', t1)
+        t2 = re.sub(r'^ +$', '', t2)
+
       self.assertEqual(t1, t2)
