@@ -9,6 +9,7 @@ import re
 import sys
 import textwrap
 import unittest
+from time import time
 
 import astroid
 import six
@@ -592,7 +593,13 @@ j  # not a complex number, just a name
 
   if six.PY3:
     def test_sys_modules(self):
+      start = time()
       for module in list(sys.modules.values()):
+        # Don't let this test (which runs twice) take longer than 13 minutes
+        # to avoid the travis build time limit of 30 minutes
+        if time() - start > 13 * 60:
+          break
+
         try:
           filename = inspect.getsourcefile(module)
         except TypeError:
