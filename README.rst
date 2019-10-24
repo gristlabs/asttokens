@@ -65,8 +65,16 @@ the code (or a particular AST node), which is more useful and powerful than deal
 directly.
 
 
-Tests
------
-Tests are in the ``tests/`` subdirectory. To run all tests, run::
+Contribute
+----------
 
-    nosetests
+To contribute:
+
+1. Fork this repository, and clone your fork.
+2. Install the package with test dependencies (ideally in a virtualenv) with::
+
+    pip install -e '.[test]'
+
+3. Run tests in your current interpreter with the command ``pytest`` or ``python -m pytest``.
+4. Run tests across all supported interpreters with the ``tox`` command. You will need to have the interpreters installed separately. We recommend ``pyenv`` for that. Use ``tox -p auto`` to run the tests in parallel.
+5. By default certain tests which take a very long time to run are skipped, but they are run on travis CI. To run them locally, set the environment variable ``ASTTOKENS_SLOW_TESTS``. For example run ``ASTTOKENS_SLOW_TESTS=1 tox`` to run the full suite of tests.
