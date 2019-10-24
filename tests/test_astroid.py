@@ -4,6 +4,7 @@ from __future__ import unicode_literals, print_function
 import astroid
 from astroid.node_classes import NodeNG
 
+from asttokens import ASTTokens
 from . import tools, test_mark_tokens
 
 
@@ -31,8 +32,8 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
         continue
       yield field, getattr(node, field)
 
-  @classmethod
-  def create_mark_checker(cls, source):
+  @staticmethod
+  def create_asttokens(source):
     builder = astroid.builder.AstroidBuilder()
     tree = builder.string_build(source)
-    return tools.MarkChecker(source, tree=tree)
+    return ASTTokens(source, tree=tree)

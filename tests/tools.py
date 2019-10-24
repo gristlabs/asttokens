@@ -5,7 +5,6 @@ import os
 import re
 import sys
 
-import asttokens
 from asttokens import util
 
 
@@ -36,8 +35,8 @@ class MarkChecker(object):
   """
   Helper tool to parse and mark an AST tree, with useful methods for verifying it.
   """
-  def __init__(self, source, parse=False, tree=None):
-    self.atok = asttokens.ASTTokens(source, parse=parse, tree=tree)
+  def __init__(self, atok):
+    self.atok = atok
     self.all_nodes = collect_nodes_preorder(self.atok.tree)
 
   def get_nodes_at(self, line, col):
