@@ -11,6 +11,9 @@ python:
   - pypy2.7-6.0
   - pypy3.5
 
+env:
+  - ASTTOKENS_SLOW_TESTS=1
+
 install:
   - pip install coveralls
   - pip install .[test]

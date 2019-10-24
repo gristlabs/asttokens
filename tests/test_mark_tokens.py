@@ -593,8 +593,18 @@ j  # not a complex number, just a name
 
   if six.PY3:
     def test_sys_modules(self):
+      """
+      Verify all nodes on source files obtained from sys.modules.
+      This can take a long time as there are many modules,
+      so it only tests all modules if the environment variable
+      ASTTOKENS_SLOW_TESTS has been set.
+      """
+      modules = list(sys.modules.values())
+      if not os.environ.get('ASTTOKENS_SLOW_TESTS'):
+        modules = modules[:20]
+
       start = time()
-      for module in list(sys.modules.values()):
+      for module in modules:
         # Don't let this test (which runs twice) take longer than 13 minutes
         # to avoid the travis build time limit of 30 minutes
         if time() - start > 13 * 60:
