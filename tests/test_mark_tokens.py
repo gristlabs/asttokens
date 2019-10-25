@@ -13,7 +13,7 @@ from time import time
 
 import astroid
 import six
-from asttokens import util
+from asttokens import util, ASTTokens
 
 from . import tools
 
@@ -27,10 +27,15 @@ class TestMarkTokens(unittest.TestCase):
   is_astroid_test = False
   module = ast
 
-  @classmethod
-  def create_mark_checker(cls, source):
-    return tools.MarkChecker(source, parse=True)
+  def create_mark_checker(self, source, verify=True):
+    checker = tools.MarkChecker(self.create_asttokens(source))
+    if verify:
+      checker.verify_all_nodes(self)
+    return checker
 
+  @staticmethod
+  def create_asttokens(source):
+    return ASTTokens(source, parse=True)
 
   def print_timing(self):
     # Print the timing of mark_tokens(). This doesn't normally run as a unittest, but if you'd like
@@ -115,7 +120,7 @@ b +     # line3
 
   def verify_fixture_file(self, path):
     source = tools.read_fixture(path)
-    m = self.create_mark_checker(source)
+    m = self.create_mark_checker(source, verify=False)
     tested_nodes = m.verify_all_nodes(self)
 
     exp_index = (0 if six.PY2 else 1) + (2 if self.is_astroid_test else 0)
@@ -176,7 +181,7 @@ b +     # line3
       # Astroid < 2 does support this with optimize_ast set to True
       astroid.MANAGER.optimize_ast = True
       try:
-        m = self.create_mark_checker(source)
+        m = self.create_mark_checker(source, verify=False)
       finally:
         astroid.MANAGER.optimize_ast = False
 
@@ -189,7 +194,7 @@ b +     # line3
       # astroid could avoid the need for the optimization by using an explicit stack like we do.
       #self.assertEqual(m.atok.get_text_range(const), (5, len(source) - 1))
     else:
-      m = self.create_mark_checker(source)
+      m = self.create_mark_checker(source, verify=False)
       self.assertEqual(len(m.all_nodes), 2104)
       self.assertEqual(m.view_node(m.all_nodes[-1]),
                        "Constant:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")
@@ -213,7 +218,6 @@ b +     # line3
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
     source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], [a[:]][::-1])"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertIn("Tuple:" + source, m.view_nodes_at(1, 0))
     self.assertEqual(m.view_nodes_at(1, 1),
                      { "Attribute:foo.Area_Code", "Name:foo" })
@@ -249,19 +253,15 @@ bar = ('x y z'   # comment2
 
   def test_print_function(self):
     # This testcase imports print as function (using from __future__). Check that we can parse it.
+    # verify_all_nodes doesn't work on Python 2 because the print() call parsed in isolation
+    # is viewed as a Print node since it doesn't see the future import
     source = tools.read_fixture('astroid/nonregr.py')
-    m = self.create_mark_checker(source)
+    m = self.create_mark_checker(source, verify=six.PY3)
 
     # Line 16 is: [indent 8] print(v.get('yo'))
     self.assertEqual(m.view_nodes_at(16, 8),
                      { "Call:print(v.get('yo'))", "Expr:print(v.get('yo'))", "Name:print" })
     self.assertEqual(m.view_nodes_at(16, 14), {"Call:v.get('yo')", "Attribute:v.get", "Name:v"})
-
-    if not six.PY2:
-      # This verification fails on Py2 because to_string() doesn't know to put parens around the
-      # print function. So on Py2 we just rely on the checks above to know that it works.
-      m.verify_all_nodes(self)
-
 
   # To make sure we can handle various hard cases, we include tests for issues reported for a
   # similar project here: https://bitbucket.org/plas/thonny
@@ -274,7 +274,6 @@ bar = ('x y z'   # comment2
         "sünnikuupäev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]",
         "sünnikuupaev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]"):
         m = self.create_mark_checker(source)
-        m.verify_all_nodes(self)
         self.assertEqual(m.view_nodes_at(1, 0), {
           "Module:%s" % source,
           "Assign:%s" % source,
@@ -294,8 +293,7 @@ bar = ('x y z'   # comment2
         'a = f"""result: {value:{width}.{precision}}"""',
         """[f"abc {a['x']} def"]""",
         "def t():\n  return f'{function(kwarg=24)}'"):
-        m = self.create_mark_checker(source)
-        m.verify_all_nodes(self)
+        self.create_mark_checker(source)
 
     def test_adjacent_joined_strings(self):
         source = """
@@ -324,7 +322,6 @@ bar = ('x y z'   # comment2
       print_all(*arr)
     """)
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(5, 0),
         { "Expr:print_all(*arr)", "Call:print_all(*arr)", "Name:print_all" })
     if not six.PY2 or self.is_astroid_test:
@@ -336,7 +333,6 @@ bar = ('x y z'   # comment2
     # See https://bitbucket.org/plas/thonny/issues/123/attribute-access-on-parenthesized
     source = "(x).foo()"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(1, 1), {"Name:x"})
     self.assertEqual(m.view_nodes_at(1, 0),
                      {"Module:(x).foo()", "Expr:(x).foo()", "Call:(x).foo()", "Attribute:(x).foo"})
@@ -345,7 +341,6 @@ bar = ('x y z'   # comment2
     # See https://bitbucket.org/plas/thonny/issues/108/ast-marker-crashes-with-conditional
     source = "a = True if True else False\nprint(a)"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     name_a = 'AssignName:a' if self.is_astroid_test else 'Name:a'
     const_true = ('Const:True' if self.is_astroid_test else
                   'Name:True' if six.PY2 else
@@ -363,7 +358,6 @@ bar = ('x y z'   # comment2
     # See https://bitbucket.org/plas/thonny/issues/96/calling-lambdas-crash-the-debugger
     source = "y = (lambda x: x + 1)(2)"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(1, 4), {'Call:(lambda x: x + 1)(2)'})
     self.assertEqual(m.view_nodes_at(1, 15), {'BinOp:x + 1', 'Name:x'})
     if self.is_astroid_test:
@@ -379,8 +373,7 @@ bar = ('x y z'   # comment2
       "{(key, val) for key, val in ast.iter_fields(node)}",
       "{key: val for key, val in ast.iter_fields(node)}",
       "[[c for c in key] for key, val in ast.iter_fields(node)]"):
-      m = self.create_mark_checker(source)
-      m.verify_all_nodes(self)
+      self.create_mark_checker(source)
 
   def test_trailing_commas(self):
     # Make sure we handle trailing commas on comma-separated structures (e.g. tuples, sets, etc.)
@@ -389,8 +382,7 @@ bar = ('x y z'   # comment2
       "[c,d,]",
       "{e,f,}",
       "{h:1,i:2,}"):
-      m = self.create_mark_checker(source)
-      m.verify_all_nodes(self)
+      self.create_mark_checker(source)
 
   def test_tuples(self):
     def get_tuples(code):
@@ -420,14 +412,12 @@ bar = ('x y z'   # comment2
     # Make sure we iterate over dict keys/values in source order.
     # See https://github.com/gristlabs/asttokens/issues/31
     source = 'f({1: (2), 3: 4}, object())'
-    m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
+    self.create_mark_checker(source)
 
   def test_del_dict(self):
     # See https://bitbucket.org/plas/thonny/issues/24/try-del-from-dictionary-in-debugging-mode
     source = "x = {4:5}\ndel x[4]"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(1, 4), {'Dict:{4:5}'})
     if self.is_astroid_test:
       self.assertEqual(m.view_nodes_at(1, 5), {'Const:4'})
@@ -444,7 +434,6 @@ bar = ('x y z'   # comment2
           return x + y
       """)
       m = self.create_mark_checker(source)
-      m.verify_all_nodes(self)
       self.assertEqual(m.view_nodes_at(2, 0),
         {'FunctionDef:def liida_arvud(x: int, y: int) -> int:\n  return x + y'})
       if self.is_astroid_test:
@@ -459,7 +448,6 @@ bar = ('x y z'   # comment2
     # See https://bitbucket.org/plas/thonny/issues/52/range-marker-fails-with-ridastrip-split
     source = "f(x=1)\ng(a=(x),b=[y])"
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     self.assertEqual(m.view_nodes_at(1, 0),
                      {'Name:f', 'Call:f(x=1)', 'Expr:f(x=1)', 'Module:' + source})
     self.assertEqual(m.view_nodes_at(2, 0),
@@ -491,7 +479,6 @@ bar = ('x y z'   # comment2
         pass
     """)
     m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
     # The `arguments` node has bogus positions here (and whenever there are no arguments). We
     # don't let that break our test because it's unclear if it matters to anything anyway.
     self.assertIn('FunctionDef:@deco1\ndef f():\n  pass', m.view_nodes_at(2, 0))
@@ -524,7 +511,8 @@ bar = ('x y z'   # comment2
           with B() as b, C() as c: log(b, c)
         log(x)
       ''')
-    m = self.create_mark_checker(source)
+    # verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
+    m = self.create_mark_checker(source, verify=six.PY3)
     self.assertEqual(m.view_nodes_at(5, 4), {
       'With:with B() as b, C() as c: log(b, c)'
     })
@@ -536,17 +524,13 @@ bar = ('x y z'   # comment2
       'With:with B() as b, C() as c: log(b, c)',
       'With:  with A() as a:\n    log(a)\n    with B() as b, C() as c: log(b, c)',
     })
-    if not six.PY2:
-      # This verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
-      m.verify_all_nodes(self)
 
   def test_one_line_if_elif(self):
     source = """
 if 1: a
 elif 2: b
     """
-    m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
+    self.create_mark_checker(source)
 
   def test_complex_numbers(self):
     source = """
@@ -559,8 +543,7 @@ j  # not a complex number, just a name
 3-4j
 1j-1j-1j-1j
     """
-    m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
+    self.create_mark_checker(source)
 
   def test_parens_around_func(self):
     source = textwrap.dedent(
@@ -584,12 +567,10 @@ j  # not a complex number, just a name
     self.assertEqual(m.view_nodes_at(8, 4),
                      {"Call:(obj.attribute.get_callback() or default_callback)()"})
     self.assertIn('BoolOp:obj.attribute.get_callback() or default_callback', m.view_nodes_at(8, 5))
-    m.verify_all_nodes(self)
 
   def test_complex_slice_and_parens(self):
     source = 'f((x)[:, 0])'
-    m = self.create_mark_checker(source)
-    m.verify_all_nodes(self)
+    self.create_mark_checker(source)
 
   if six.PY3:
     def test_sys_modules(self):
@@ -631,14 +612,11 @@ j  # not a complex number, just a name
           print('Skipping', filename)
           continue
 
-        m = self.create_mark_checker(source)
-
-        m.verify_all_nodes(self)
+        self.create_mark_checker(source)
 
   if six.PY3:
     def test_dict_merge(self):
-      m = self.create_mark_checker("{**{}}")
-      m.verify_all_nodes(self)
+      self.create_mark_checker("{**{}}")
 
   def parse_snippet(self, text, node):
     """
