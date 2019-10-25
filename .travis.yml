@@ -12,8 +12,9 @@ python:
   - pypy3.5
 
 env:
-  - ASTTOKENS_SLOW_TESTS=1
-  - COVERALLS_PARALLEL=true
+  global:
+    - ASTTOKENS_SLOW_TESTS=1
+    - COVERALLS_PARALLEL=true
 
 install:
   - pip install coveralls
