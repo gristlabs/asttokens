@@ -9,6 +9,8 @@ ASTTokens
     :target: https://travis-ci.org/gristlabs/asttokens
 .. image:: https://readthedocs.org/projects/asttokens/badge/?version=latest
     :target: http://asttokens.readthedocs.io/en/latest/index.html
+.. image:: https://coveralls.io/repos/github/gristlabs/asttokens/badge.svg
+    :target: https://coveralls.io/github/gristlabs/asttokens
 
 .. Start of user-guide
 
