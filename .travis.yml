@@ -13,6 +13,7 @@ python:
 
 env:
   - ASTTOKENS_SLOW_TESTS=1
+  - COVERALLS_PARALLEL=true
 
 install:
   - pip install coveralls
