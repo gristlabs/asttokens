@@ -9,6 +9,7 @@ import re
 import sys
 import textwrap
 import unittest
+from time import time
 
 import astroid
 import six
@@ -592,7 +593,23 @@ j  # not a complex number, just a name
 
   if six.PY3:
     def test_sys_modules(self):
-      for module in list(sys.modules.values()):
+      """
+      Verify all nodes on source files obtained from sys.modules.
+      This can take a long time as there are many modules,
+      so it only tests all modules if the environment variable
+      ASTTOKENS_SLOW_TESTS has been set.
+      """
+      modules = list(sys.modules.values())
+      if not os.environ.get('ASTTOKENS_SLOW_TESTS'):
+        modules = modules[:20]
+
+      start = time()
+      for module in modules:
+        # Don't let this test (which runs twice) take longer than 13 minutes
+        # to avoid the travis build time limit of 30 minutes
+        if time() - start > 13 * 60:
+          break
+
         try:
           filename = inspect.getsourcefile(module)
         except TypeError:
@@ -608,6 +625,12 @@ j  # not a complex number, just a name
             source = f.read()
         except OSError:
           continue
+
+        # Astroid fails with a syntax error if a type comment is on its own line
+        if self.is_astroid_test and re.search(r'^\s*# type: ', source, re.MULTILINE):
+          print('Skipping', filename)
+          continue
+
         m = self.create_mark_checker(source)
 
         m.verify_all_nodes(self)
@@ -666,22 +689,33 @@ j  # not a complex number, just a name
     check('def foo():\n    """xxx"""\n    None',
           'def foo():\n    """xx"""\n    None')
 
-  def assert_nodes_equal(self, t1, t2):
-    if isinstance(t1, ast.expr_context):
-      # Ignore the context of each node which can change when parsing
-      # substrings of source code. We just want equal structure and contents.
-      self.assertIsInstance(t2, ast.expr_context)
-      return
+  nodes_classes = ast.AST
+  context_classes = [ast.expr_context]
+  iter_fields = staticmethod(ast.iter_fields)
 
-    self.assertEqual(type(t1), type(t2))
+  def assert_nodes_equal(self, t1, t2):
+    # Ignore the context of each node which can change when parsing
+    # substrings of source code. We just want equal structure and contents.
+    for context_classes_group in self.context_classes:
+      if isinstance(t1, context_classes_group):
+        self.assertIsInstance(t2, context_classes_group)
+        break
+    else:
+      self.assertEqual(type(t1), type(t2))
+
     if isinstance(t1, (list, tuple)):
       self.assertEqual(len(t1), len(t2))
       for vc1, vc2 in zip(t1, t2):
         self.assert_nodes_equal(vc1, vc2)
-    elif isinstance(t1, ast.AST):
+    elif isinstance(t1, self.nodes_classes):
       self.assert_nodes_equal(
-        list(ast.iter_fields(t1)),
-        list(ast.iter_fields(t2)),
+        list(self.iter_fields(t1)),
+        list(self.iter_fields(t2)),
       )
     else:
+      # Weird bug in astroid that collapses spaces in docstrings sometimes maybe
+      if self.is_astroid_test and isinstance(t1, six.string_types):
+        t1 = re.sub(r'^ +$', '', t1, flags=re.MULTILINE)
+        t2 = re.sub(r'^ +$', '', t2, flags=re.MULTILINE)
+
       self.assertEqual(t1, t2)

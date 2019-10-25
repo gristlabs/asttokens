@@ -1,19 +1,26 @@
+dist: xenial
 language: python
 sudo: false
 
-matrix:
-  include:
-    - python: 2.7
-    - python: 3.5
-    - python: 3.6
-    - python: 3.7
-    - python: 3.8-dev
-    - python: pypy2.7-6.0
-    - python: pypy3.5
-      dist: xenial
-      sudo: true
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
+  - 3.8-dev
+  - pypy2.7-6.0
+  - pypy3.5
 
-# command to install dependencies
-install: pip install tox-travis
-# command to run tests
-script: tox
+env:
+  - ASTTOKENS_SLOW_TESTS=1
+
+install:
+  - pip install coveralls
+  - pip install .[test]
+
+script:
+  - travis_wait 30 coverage run --include='asttokens/*' -m pytest
+  - coverage report -m
+
+after_success:
+  - coveralls
