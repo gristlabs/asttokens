@@ -618,7 +618,7 @@ j  # not a complex number, just a name
     def test_dict_merge(self):
       self.create_mark_checker("{**{}}")
 
-    def test_async(self):
+    def test_async_def(self):
       self.create_mark_checker("""
 async def foo():
   pass
@@ -628,16 +628,16 @@ async def foo():
   pass
 """)
 
-  if sys.version_info >= (3, 7):
     def test_async_for_and_with(self):
-      self.create_mark_checker("""
+      # Can't verify all nodes because in < 3.7
+      # async for/with outside of a function is invalid syntax
+      m = self.create_mark_checker("""
 async def foo():
-  async for x in y:
-    pass
-
-  async with x as y:
-    pass
-""")
+  async for x in y: pass
+  async with x as y: pass
+  """, verify=False)
+      assert m.view_nodes_at(3, 2) == {"AsyncFor:async for x in y: pass"}
+      assert m.view_nodes_at(4, 2) == {"AsyncWith:async with x as y: pass"}
 
   if sys.version_info >= (3, 8):
     def test_assignment_expressions(self):
