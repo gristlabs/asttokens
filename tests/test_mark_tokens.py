@@ -639,6 +639,50 @@ async def foo():
     pass
 """)
 
+  if sys.version_info >= (3, 8):
+    def test_assignment_expressions(self):
+      # From https://www.python.org/dev/peps/pep-0572/
+      self.create_mark_checker("""
+# Handle a matched regex
+if (match := pattern.search(data)) is not None:
+    # Do something with match
+    pass
+
+# A loop that can't be trivially rewritten using 2-arg iter()
+while chunk := file.read(8192):
+   process(chunk)
+
+# Reuse a value that's expensive to compute
+[y := f(x), y**2, y**3]
+
+# Share a subexpression between a comprehension filter clause and its output
+filtered_data = [y for x in data if (y := f(x)) is not None]
+
+y0 = (y1 := f(x))  # Valid, though discouraged
+
+foo(x=(y := f(x)))  # Valid, though probably confusing
+
+def foo(answer=(p := 42)):  # Valid, though not great style
+    ...
+
+def foo(answer: (p := 42) = 5):  # Valid, but probably never useful
+    ...
+
+lambda: (x := 1) # Valid, but unlikely to be useful
+
+(x := lambda: 1) # Valid
+
+lambda line: (m := re.match(pattern, line)) and m.group(1) # Valid
+
+if any((comment := line).startswith('#') for line in lines):
+    print("First comment:", comment)
+
+if all((nonblank := line).strip() == '' for line in lines):
+    print("All lines are blank")
+
+partial_sums = [total := total + v for v in values]
+""")
+
   def parse_snippet(self, text, node):
     """
     Returns the parsed AST tree for the given text, handling issues with indentation and newlines
