@@ -639,6 +639,15 @@ async def foo():
       assert m.view_nodes_at(3, 2) == {"AsyncFor:async for x in y: pass"}
       assert m.view_nodes_at(4, 2) == {"AsyncWith:async with x as y: pass"}
 
+    def test_await(self):
+      # Can't verify all nodes because in astroid
+      # await outside of an async function is invalid syntax
+      m = self.create_mark_checker("""
+async def foo():
+  await bar
+  """, verify=False)
+      assert m.view_nodes_at(3, 2) == {"Await:await bar", "Expr:await bar"}
+
   if sys.version_info >= (3, 8):
     def test_assignment_expressions(self):
       # From https://www.python.org/dev/peps/pep-0572/
