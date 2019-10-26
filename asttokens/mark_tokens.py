@@ -99,10 +99,7 @@ class MarkTokens(object):
     node.last_token = nlast
 
   def _find_last_in_line(self, start_token):
-    try:
-      newline = self._code.find_token(start_token, token.NEWLINE)
-    except IndexError:
-      newline = self._code.find_token(start_token, token.ENDMARKER)
+    newline = self._code.find_token(start_token, token.NEWLINE)
     return self._code.prev_token(newline)
 
   def _expand_to_matching_pairs(self, first_token, last_token, node):
@@ -237,12 +234,9 @@ class MarkTokens(object):
 
   def handle_bare_tuple(self, node, first_token, last_token):
     # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
-    try:
-      maybe_comma = self._code.next_token(last_token)
-      if util.match_token(maybe_comma, token.OP, ','):
-        last_token = maybe_comma
-    except IndexError:
-      pass
+    maybe_comma = self._code.next_token(last_token)
+    if util.match_token(maybe_comma, token.OP, ','):
+      last_token = maybe_comma
     return (first_token, last_token)
 
   if sys.version_info >= (3, 8):
@@ -363,7 +357,7 @@ class MarkTokens(object):
   # AsyncFunctionDef is slightly different because it might have
   # decorators before that, which visit_functiondef handles
   def handle_async(self, node, first_token, last_token):
-    if not util.match_token(first_token, token.ASYNC, 'async'):
+    if not first_token.string == 'async':
       first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
 

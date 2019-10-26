@@ -137,5 +137,24 @@ class TestASTTokens(unittest.TestCase):
       "ENDMARKER:''"
     ])
 
+
+def test_filename():
+  filename = "myfile.py"
+  atok = asttokens.ASTTokens("a", parse=True, filename=filename)
+  assert filename == atok.filename
+
+
+def test_doesnt_have_location():
+  atok = asttokens.ASTTokens("a", parse=True)
+
+  context = atok.tree.body[0].value.ctx
+  assert isinstance(context, ast.Load)
+  assert atok.get_text_range(context) == (0, 0)
+  assert atok.get_text(context) == ""
+
+  assert atok.get_text_range(None) == (0, 0)
+  assert atok.get_text(None) == ""
+
+
 if __name__ == "__main__":
   unittest.main()
