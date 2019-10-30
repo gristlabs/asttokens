@@ -147,11 +147,15 @@ def test_filename():
 def test_doesnt_have_location():
   atok = asttokens.ASTTokens("a", parse=True)
 
+  # Testing the documentation that says:
+  # "Returns (0, 0) for nodes (like `Load`) that don't correspond
+  #  to any particular text."
   context = atok.tree.body[0].value.ctx
   assert isinstance(context, ast.Load)
   assert atok.get_text_range(context) == (0, 0)
   assert atok.get_text(context) == ""
 
+  # This actually also applies to non-nodes
   assert atok.get_text_range(None) == (0, 0)
   assert atok.get_text(None) == ""
 

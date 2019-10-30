@@ -160,7 +160,7 @@ def visit_tree(node, previsit, postvisit):
         returned from ``previsit()`` of this node itself. The return ``value`` is ignored except
         the one for the root node, which is returned from the overall ``visit_tree()`` call.
 
-  For the initial node, ``par_value`` is None. Either ``previsit`` and ``postvisit`` may be None.
+  For the initial node, ``par_value`` is None. ``postvisit`` may be None.
   """
   if not postvisit:
     postvisit = lambda node, pvalue, value: None
