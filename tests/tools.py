@@ -4,7 +4,6 @@ import io
 import os
 import re
 import sys
-import token
 
 from asttokens import util
 
@@ -39,7 +38,6 @@ class MarkChecker(object):
   def __init__(self, atok):
     self.atok = atok
     self.all_nodes = collect_nodes_preorder(self.atok.tree)
-    assert atok.tokens[-1].type == token.ENDMARKER
 
   def get_nodes_at(self, line, col):
     """Returns all nodes that start with the token at the given position."""

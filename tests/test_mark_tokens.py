@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import textwrap
+import token
 import unittest
 from time import time
 
@@ -28,7 +29,16 @@ class TestMarkTokens(unittest.TestCase):
   module = ast
 
   def create_mark_checker(self, source, verify=True):
-    checker = tools.MarkChecker(self.create_asttokens(source))
+    atok = self.create_asttokens(source)
+    checker = tools.MarkChecker(atok)
+
+    # The last token should always be an ENDMARKER
+    # None of the nodes should contain that token
+    assert atok.tokens[-1].type == token.ENDMARKER
+    if atok.text:  # except for empty files
+      for node in checker.all_nodes:
+        assert node.last_token.type != token.ENDMARKER
+
     if verify:
       checker.verify_all_nodes(self)
     return checker
