@@ -72,17 +72,12 @@ else:
     """
     return token_type >= token.N_TOKENS
 
-def iter_children(node):
-  """
-  Yields all direct children of a AST node, skipping children that are singleton nodes.
-  """
-  return iter_children_astroid(node) if hasattr(node, 'get_children') else iter_children_ast(node)
-
 
 def iter_children_func(node):
   """
-  Returns a slightly more optimized function to use in place of ``iter_children``, depending on
-  whether ``node`` is from ``ast`` or from the ``astroid`` module.
+  Returns a function which yields all direct children of a AST node,
+  skipping children that are singleton nodes.
+  The function depends on whether ``node`` is from ``ast`` or from the ``astroid`` module.
   """
   return iter_children_astroid if hasattr(node, 'get_children') else iter_children_ast
 
@@ -165,10 +160,8 @@ def visit_tree(node, previsit, postvisit):
         returned from ``previsit()`` of this node itself. The return ``value`` is ignored except
         the one for the root node, which is returned from the overall ``visit_tree()`` call.
 
-  For the initial node, ``par_value`` is None. Either ``previsit`` and ``postvisit`` may be None.
+  For the initial node, ``par_value`` is None. ``postvisit`` may be None.
   """
-  if not previsit:
-    previsit = lambda node, pvalue: (None, None)
   if not postvisit:
     postvisit = lambda node, pvalue, value: None
 

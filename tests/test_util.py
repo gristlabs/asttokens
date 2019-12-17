@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
+import token
+
 import astroid
 import unittest
+
+import pytest
+
 from .context import asttokens
 from .tools import get_node_name
 
@@ -99,6 +104,13 @@ class TestUtil(unittest.TestCase):
                      "TEST(TEST(1 + 2), val + val + val)")
     self.assertEqual(asttokens.util.replace(source, repl2 + repl1),
                      "TEST(TEST(1 + 2), val + val + val)")
+
+
+def test_expect_token():
+  atok = asttokens.ASTTokens("a", parse=True)
+  tok = atok.tokens[0]
+  with pytest.raises(ValueError):
+    asttokens.util.expect_token(tok, token.OP)
 
 
 if __name__ == "__main__":

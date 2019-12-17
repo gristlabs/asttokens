@@ -8,6 +8,7 @@ import os
 import re
 import sys
 import textwrap
+import token
 import unittest
 from time import time
 
@@ -28,7 +29,16 @@ class TestMarkTokens(unittest.TestCase):
   module = ast
 
   def create_mark_checker(self, source, verify=True):
-    checker = tools.MarkChecker(self.create_asttokens(source))
+    atok = self.create_asttokens(source)
+    checker = tools.MarkChecker(atok)
+
+    # The last token should always be an ENDMARKER
+    # None of the nodes should contain that token
+    assert atok.tokens[-1].type == token.ENDMARKER
+    if atok.text:  # except for empty files
+      for node in checker.all_nodes:
+        assert node.last_token.type != token.ENDMARKER
+
     if verify:
       checker.verify_all_nodes(self)
     return checker
@@ -617,6 +627,80 @@ j  # not a complex number, just a name
   if six.PY3:
     def test_dict_merge(self):
       self.create_mark_checker("{**{}}")
+
+    def test_async_def(self):
+      self.create_mark_checker("""
+async def foo():
+  pass
+
+@decorator
+async def foo():
+  pass
+""")
+
+    def test_async_for_and_with(self):
+      # Can't verify all nodes because in < 3.7
+      # async for/with outside of a function is invalid syntax
+      m = self.create_mark_checker("""
+async def foo():
+  async for x in y: pass
+  async with x as y: pass
+  """, verify=False)
+      assert m.view_nodes_at(3, 2) == {"AsyncFor:async for x in y: pass"}
+      assert m.view_nodes_at(4, 2) == {"AsyncWith:async with x as y: pass"}
+
+    def test_await(self):
+      # Can't verify all nodes because in astroid
+      # await outside of an async function is invalid syntax
+      m = self.create_mark_checker("""
+async def foo():
+  await bar
+  """, verify=False)
+      assert m.view_nodes_at(3, 2) == {"Await:await bar", "Expr:await bar"}
+
+  if sys.version_info >= (3, 8):
+    def test_assignment_expressions(self):
+      # From https://www.python.org/dev/peps/pep-0572/
+      self.create_mark_checker("""
+# Handle a matched regex
+if (match := pattern.search(data)) is not None:
+    # Do something with match
+    pass
+
+# A loop that can't be trivially rewritten using 2-arg iter()
+while chunk := file.read(8192):
+   process(chunk)
+
+# Reuse a value that's expensive to compute
+[y := f(x), y**2, y**3]
+
+# Share a subexpression between a comprehension filter clause and its output
+filtered_data = [y for x in data if (y := f(x)) is not None]
+
+y0 = (y1 := f(x))  # Valid, though discouraged
+
+foo(x=(y := f(x)))  # Valid, though probably confusing
+
+def foo(answer=(p := 42)):  # Valid, though not great style
+    ...
+
+def foo(answer: (p := 42) = 5):  # Valid, but probably never useful
+    ...
+
+lambda: (x := 1) # Valid, but unlikely to be useful
+
+(x := lambda: 1) # Valid
+
+lambda line: (m := re.match(pattern, line)) and m.group(1) # Valid
+
+if any((comment := line).startswith('#') for line in lines):
+    print("First comment:", comment)
+
+if all((nonblank := line).strip() == '' for line in lines):
+    print("All lines are blank")
+
+partial_sums = [total := total + v for v in values]
+""")
 
   def parse_snippet(self, text, node):
     """
