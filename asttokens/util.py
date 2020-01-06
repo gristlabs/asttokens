@@ -219,7 +219,7 @@ def replace(text, replacements):
   modifications of ranges e.g. as identified by ``ASTTokens.get_text_range(node)``. Replacements is
   an iterable of ``(start, end, new_text)`` tuples.
 
-  For example, ``replace("this is a test", [(0, 4, "X"), (8, 1, "THE")])`` produces
+  For example, ``replace("this is a test", [(0, 4, "X"), (8, 9, "THE")])`` produces
   ``"X is THE test"``.
   """
   p = 0
