@@ -1,5 +1,7 @@
+/asttokens/version.py
+
 .coverage
-*.pyc
+*.py[co]
 
 # Building and packaging
 build/
