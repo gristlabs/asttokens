@@ -83,7 +83,7 @@ class MarkTokens(object):
 
     # Statements continue to before NEWLINE. This helps cover a few different cases at once.
     if util.is_stmt(node):
-      last = self._find_last_in_line(last)
+      last = self._find_last_in_stmt(last)
 
     # Capture any unmatched brackets.
     first, last = self._expand_to_matching_pairs(first, last, node)
@@ -98,9 +98,13 @@ class MarkTokens(object):
     node.first_token = nfirst
     node.last_token = nlast
 
-  def _find_last_in_line(self, start_token):
-    newline = self._code.find_token(start_token, token.NEWLINE)
-    return self._code.prev_token(newline)
+  def _find_last_in_stmt(self, start_token):
+    t = start_token
+    while (not util.match_token(t, token.NEWLINE) and
+           not util.match_token(t, token.OP, ';') and
+           not token.ISEOF(t.type)):
+      t = self._code.next_token(t, include_extra=True)
+    return self._code.prev_token(t)
 
   def _expand_to_matching_pairs(self, first_token, last_token, node):
     """
