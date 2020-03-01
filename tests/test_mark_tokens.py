@@ -542,6 +542,20 @@ elif 2: b
     """
     self.create_mark_checker(source)
 
+
+  def test_statements_with_semicolons(self):
+    source = """
+a; b; c(
+  17
+); d # comment1; comment2
+if 2: a; b; # comment3
+    """
+    m = self.create_mark_checker(source)
+    self.assertEqual(
+      [m.atok.get_text(n) for n in m.all_nodes if util.is_stmt(n)],
+      ['a', 'b', 'c(\n  17\n)', 'd', 'if 2: a; b', 'a', 'b'])
+
+
   def test_complex_numbers(self):
     source = """
 1
