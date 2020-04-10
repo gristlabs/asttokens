@@ -142,6 +142,19 @@ def is_joined_str(node):
   return node.__class__.__name__ == 'JoinedStr'
 
 
+def is_slice(node):
+  """Returns whether node represents a slice, e.g. `1:2` in `x[1:2]`"""
+  # Before 3.9, a tuple containing a slice is an ExtSlice,
+  # but this was removed in https://bugs.python.org/issue34822
+  return (
+      node.__class__.__name__ in ('Slice', 'ExtSlice')
+      or (
+          node.__class__.__name__ == 'Tuple'
+          and any(map(is_slice, node.elts))
+      )
+  )
+
+
 # Sentinel value used by visit_tree().
 _PREVISIT = object()
 
