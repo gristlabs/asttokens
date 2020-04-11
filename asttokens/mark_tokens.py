@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ast
 import numbers
 import sys
 import token
@@ -329,14 +328,13 @@ class MarkTokens(object):
   visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
-    # ast.keyword changed in 3.9 https://bugs.python.org/issue40141
-    # Astroid was not affected
-    if sys.version_info < (3, 9) or not isinstance(node, ast.AST):
-      if node.arg is not None:
-        equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
-        name = self._code.prev_token(equals)
-        util.expect_token(name, token.NAME, node.arg)
-        first_token = name
+    # Until python 3.9 (https://bugs.python.org/issue40141),
+    # ast.keyword nodes didn't have line info. Astroid has lineno None.
+    if node.arg is not None and getattr(node, 'lineno', None) is None:
+      equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
+      name = self._code.prev_token(equals)
+      util.expect_token(name, token.NAME, node.arg)
+      first_token = name
     return (first_token, last_token)
 
   def visit_starred(self, node, first_token, last_token):
