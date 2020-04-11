@@ -328,7 +328,9 @@ class MarkTokens(object):
   visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
-    if node.arg is not None:
+    # Until python 3.9 (https://bugs.python.org/issue40141),
+    # ast.keyword nodes didn't have line info. Astroid has lineno None.
+    if node.arg is not None and getattr(node, 'lineno', None) is None:
       equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
       name = self._code.prev_token(equals)
       util.expect_token(name, token.NAME, node.arg)

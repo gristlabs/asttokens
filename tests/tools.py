@@ -71,7 +71,13 @@ class MarkChecker(object):
     test_case.longMessage = True
     tested_nodes = 0
     for node in self.all_nodes:
-      if not (util.is_stmt(node) or util.is_expr(node) or util.is_module(node)):
+      if not (
+          util.is_stmt(node) or
+          util.is_expr(node) or
+          util.is_module(node)
+        # In 3.9+, slices are now expressions in the AST, but of course their source code
+        # can't be parsed
+      ) or util.is_slice(node):
         continue
 
       text = self.atok.get_text(node)
