@@ -39,10 +39,14 @@ class ASTTokens(object):
   addition to the trees produced by the ``ast`` module, ASTTokens will also mark trees produced
   using ``astroid`` library <https://www.astroid.org>.
 
+  If ``mark_node_specific_methods`` is ``True``, then there will be trying
+  to specially handle an attribute node. The ``False`` value disables the handling.
+
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
   """
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', mark_node_specific_methods=True):
+    self._mark_node_specific_methods = mark_node_specific_methods
     self._filename = filename
     self._tree = ast.parse(source_text, filename) if parse else tree
 

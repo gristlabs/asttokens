@@ -89,7 +89,10 @@ class MarkTokens(object):
     first, last = self._expand_to_matching_pairs(first, last, node)
 
     # Give a chance to node-specific methods to adjust.
-    nfirst, nlast = self._methods.get(self, node.__class__)(node, first, last)
+    if self._code._mark_node_specific_methods:
+      nfirst, nlast = self._methods.get(self, node.__class__)(node, first, last)
+    else:
+      nfirst, nlast = first, last
 
     if (nfirst, nlast) != (first, last):
       # If anything changed, expand again to capture any unmatched brackets.
