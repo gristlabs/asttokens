@@ -17,8 +17,6 @@ import bisect
 import token
 import tokenize
 import io
-import six
-from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token, is_non_coding_token
 from .mark_tokens import MarkTokens
@@ -49,7 +47,7 @@ class ASTTokens(object):
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,
     # we'll fail with a unicode error here.)
-    if isinstance(source_text, six.binary_type):
+    if isinstance(source_text, bytes):
       source_text = source_text.decode('utf8')
 
     self._text = source_text
@@ -170,7 +168,7 @@ class ASTTokens(object):
     Yields all tokens in order from first_token through and including last_token. If
     include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
     """
-    for i in xrange(first_token.index, last_token.index + 1):
+    for i in range(first_token.index, last_token.index + 1):
       if include_extra or not is_non_coding_token(self._tokens[i].type):
         yield self._tokens[i]
 

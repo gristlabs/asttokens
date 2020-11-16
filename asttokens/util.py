@@ -15,7 +15,6 @@
 import ast
 import collections
 import token
-from six import iteritems
 
 
 def token_repr(tok_type, string):
@@ -90,7 +89,7 @@ def iter_children_astroid(node):
   return node.get_children()
 
 
-SINGLETONS = {c for n, c in iteritems(ast.__dict__) if isinstance(c, type) and
+SINGLETONS = {c for n, c in ast.__dict__.items() if isinstance(c, type) and
               issubclass(c, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop))}
 
 def iter_children_ast(node):
@@ -115,9 +114,9 @@ def iter_children_ast(node):
       yield child
 
 
-stmt_class_names = {n for n, c in iteritems(ast.__dict__)
+stmt_class_names = {n for n, c in ast.__dict__.items()
                     if isinstance(c, type) and issubclass(c, ast.stmt)}
-expr_class_names = ({n for n, c in iteritems(ast.__dict__)
+expr_class_names = ({n for n, c in ast.__dict__.items()
                     if isinstance(c, type) and issubclass(c, ast.expr)} |
                     {'AssignName', 'DelName', 'Const', 'AssignAttr', 'DelAttr'})
 

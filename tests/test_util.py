@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function
 import ast
 import token
 
@@ -43,7 +41,7 @@ class TestUtil(unittest.TestCase):
     atok = asttokens.ASTTokens(self.source, parse=True)
 
     def view(node):
-      return "%s:%s" % (get_node_name(node), atok.get_text(node))
+      return "{}:{}".format(get_node_name(node), atok.get_text(node))
 
     scan = [view(n) for n in asttokens.util.walk(atok.tree)]
     self.assertEqual(scan, [
@@ -67,7 +65,7 @@ class TestUtil(unittest.TestCase):
     atok = asttokens.ASTTokens(self.source, tree=astroid.builder.parse(self.source))
 
     def view(node):
-      return "%s:%s" % (get_node_name(node), atok.get_text(node))
+      return "{}:{}".format(get_node_name(node), atok.get_text(node))
 
     scan = [view(n) for n in asttokens.util.walk(atok.tree)]
     self.assertEqual(scan, [

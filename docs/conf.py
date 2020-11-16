@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-#
 # asttokens documentation build configuration file, created by
 # sphinx-quickstart on Sat Dec 10 13:00:48 2016.
 #

@@ -16,8 +16,6 @@ import numbers
 import sys
 import token
 
-import six
-
 from . import util
 
 # Mapping of matching braces. To find a token here, look up token[:2].
@@ -163,14 +161,6 @@ class MarkTokens(object):
   if sys.version_info < (3, 8):
     def visit_listcomp(self, node, first_token, last_token):
       return self.handle_comp('[', node, first_token, last_token)
-
-  if six.PY2:
-    # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
-    def visit_setcomp(self, node, first_token, last_token):
-      return self.handle_comp('{', node, first_token, last_token)
-
-    def visit_dictcomp(self, node, first_token, last_token):
-      return self.handle_comp('{', node, first_token, last_token)
 
   def visit_comprehension(self, node, first_token, last_token):
     # The 'comprehension' node starts with 'for' but we only get first child; we search backwards
@@ -318,7 +308,7 @@ class MarkTokens(object):
   def visit_const(self, node, first_token, last_token):
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
-    elif isinstance(node.value, (six.text_type, six.binary_type)):
+    elif isinstance(node.value, (str, bytes)):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
@@ -351,12 +341,6 @@ class MarkTokens(object):
       colon = self._code.find_token(last_token, token.OP, ':')
       first_token = last_token = self._code.prev_token(colon)
     return (first_token, last_token)
-
-  if six.PY2:
-    # No need for this on Python3, which already handles 'with' nodes correctly.
-    def visit_with(self, node, first_token, last_token):
-      first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
-      return (first, last_token)
 
   # Async nodes should typically start with the word 'async'
   # but Python < 3.7 doesn't put the col_offset there
