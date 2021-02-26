@@ -143,7 +143,7 @@ def is_joined_str(node):
 
 
 def is_starred(node):
-  """Returns whether node is an expression node."""
+  """Returns whether node is a starred expression node."""
   return node.__class__.__name__ == 'Starred'
 
 
