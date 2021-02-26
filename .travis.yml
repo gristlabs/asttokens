@@ -1,4 +1,4 @@
-dist: xenial
+dist: bionic
 language: python
 sudo: false
 
@@ -9,8 +9,8 @@ python:
   - 3.7
   - 3.8-dev
   - 3.9-dev
-  - pypy2.7-6.0
-  - pypy3.5
+  - pypy2
+  - pypy3
 
 env:
   global:
