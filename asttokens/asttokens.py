@@ -17,11 +17,15 @@ import bisect
 import token
 import tokenize
 import io
+from astroid import NodeNG # type: ignore[import]
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token, is_non_coding_token
 from .mark_tokens import MarkTokens
+from asttokens.util import Token
+from typing import Iterator, List, Optional, Tuple, Union
+from ast import Module
 
 class ASTTokens(object):
   """
@@ -43,6 +47,7 @@ class ASTTokens(object):
   tree created separately.
   """
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
+    # type: (str, bool, Optional[Module], str) -> None
     self._filename = filename
     self._tree = ast.parse(source_text, filename) if parse else tree
 
@@ -66,6 +71,7 @@ class ASTTokens(object):
 
 
   def mark_tokens(self, root_node):
+    # type: (Module) -> None
     """
     Given the root of the AST or Astroid tree produced from source_text, visits all nodes marking
     them with token and position information by adding ``.first_token`` and
@@ -77,6 +83,7 @@ class ASTTokens(object):
 
 
   def _generate_tokens(self, text):
+    # type: (str) -> Iterator[Token]
     """
     Generates tokens for the given code.
     """
@@ -90,25 +97,30 @@ class ASTTokens(object):
 
   @property
   def text(self):
+    # type: () -> str
     """The source code passed into the constructor."""
     return self._text
 
   @property
   def tokens(self):
+    # type: () -> List[Token]
     """The list of tokens corresponding to the source code from the constructor."""
     return self._tokens
 
   @property
   def tree(self):
+    # type: () -> Optional[Module]
     """The root of the AST tree passed into the constructor or parsed from the source code."""
     return self._tree
 
   @property
   def filename(self):
+    # type: () -> str
     """The filename that was parsed"""
     return self._filename
 
   def get_token_from_offset(self, offset):
+    # type: (int) -> Token
     """
     Returns the token containing the given character offset (0-based position in source text),
     or the preceeding token if the position is between tokens.
@@ -116,6 +128,7 @@ class ASTTokens(object):
     return self._tokens[bisect.bisect(self._token_offsets, offset) - 1]
 
   def get_token(self, lineno, col_offset):
+    # type: (int, int) -> Token
     """
     Returns the token containing the given (lineno, col_offset) position, or the preceeding token
     if the position is between tokens.
@@ -126,12 +139,14 @@ class ASTTokens(object):
     return self.get_token_from_offset(self._line_numbers.line_to_offset(lineno, col_offset))
 
   def get_token_from_utf8(self, lineno, col_offset):
+    # type: (int, int) -> Token
     """
     Same as get_token(), but interprets col_offset as a UTF8 offset, which is what `ast` uses.
     """
     return self.get_token(lineno, self._line_numbers.from_utf8_col(lineno, col_offset))
 
   def next_token(self, tok, include_extra=False):
+    # type: (Token, bool) -> Token
     """
     Returns the next token after the given one. If include_extra is True, includes non-coding
     tokens from the tokenize module, such as NL and COMMENT.
@@ -143,6 +158,7 @@ class ASTTokens(object):
     return self._tokens[i]
 
   def prev_token(self, tok, include_extra=False):
+    # type: (Token, bool) -> Token
     """
     Returns the previous token before the given one. If include_extra is True, includes non-coding
     tokens from the tokenize module, such as NL and COMMENT.
@@ -154,6 +170,7 @@ class ASTTokens(object):
     return self._tokens[i]
 
   def find_token(self, start_token, tok_type, tok_str=None, reverse=False):
+    # type: (Token, int, Optional[str], bool) -> Token
     """
     Looks for the first token, starting at start_token, that matches tok_type and, if given, the
     token string. Searches backwards if reverse is True. Returns ENDMARKER token if not found (you
@@ -165,7 +182,12 @@ class ASTTokens(object):
       t = advance(t, include_extra=True)
     return t
 
-  def token_range(self, first_token, last_token, include_extra=False):
+  def token_range(self,
+                  first_token,  # type: Token
+                  last_token,  # type: Token
+                  include_extra=False,  # type: bool
+                  ):
+    # type: (...) -> Iterator[Token]
     """
     Yields all tokens in order from first_token through and including last_token. If
     include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
@@ -175,6 +197,7 @@ class ASTTokens(object):
         yield self._tokens[i]
 
   def get_tokens(self, node, include_extra=False):
+    # type: (NodeNG, bool) -> Iterator
     """
     Yields all tokens making up the given node. If include_extra is True, includes non-coding
     tokens such as tokenize.NL and .COMMENT.
@@ -182,6 +205,7 @@ class ASTTokens(object):
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
   def get_text_range(self, node):
+    # type: (NodeNG) -> Tuple[int, int]
     """
     After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
     corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
@@ -198,6 +222,7 @@ class ASTTokens(object):
     return (start, node.last_token.endpos)
 
   def get_text(self, node):
+    # type: (NodeNG) -> str
     """
     After mark_tokens() has been called, returns the text corresponding to the given node. Returns
     '' for nodes (like `Load`) that don't correspond to any particular text.

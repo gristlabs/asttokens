@@ -16,9 +16,15 @@ import ast
 import collections
 import token
 from six import iteritems
+from abc import ABCMeta
+from asttokens.mark_tokens import MarkTokens
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast
+from ast import Module, expr, AST
+from astroid import NodeNG # type: ignore[import]
 
 
 def token_repr(tok_type, string):
+  # type: (int, Optional[str]) -> str
   """Returns a human-friendly representation of a token with the given type and string."""
   # repr() prefixes unicode with 'u' on Python2 but not Python3; strip it out for consistency.
   return '%s:%s' % (token.tok_name[tok_type], repr(string).lstrip('u'))
@@ -39,15 +45,18 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
   - [7] .endpos   Ending character offset into the input text.
   """
   def __str__(self):
+    # type: () -> str
     return token_repr(self.type, self.string)
 
 
 def match_token(token, tok_type, tok_str=None):
+  # type: (Token, int, Optional[str]) -> bool
   """Returns true if token is of the given type and, if a string is given, has that string."""
   return token.type == tok_type and (tok_str is None or token.string == tok_str)
 
 
 def expect_token(token, tok_type, tok_str=None):
+  # type: (Token, int, Optional[str]) -> None
   """
   Verifies that the given token is of the expected type. If tok_str is given, the token string
   is verified too. If the token doesn't match, raises an informative ValueError.
@@ -61,12 +70,14 @@ def expect_token(token, tok_type, tok_str=None):
 # token.N_TOKEN. As of python3.7, they are in token.py, and we check for them explicitly.
 if hasattr(token, 'ENCODING'):
   def is_non_coding_token(token_type):
+    # type: (int) -> bool
     """
     These are considered non-coding tokens, as they don't affect the syntax tree.
     """
     return token_type in (token.NL, token.COMMENT, token.ENCODING)
 else:
   def is_non_coding_token(token_type):
+    # type: (int) -> bool
     """
     These are considered non-coding tokens, as they don't affect the syntax tree.
     """
@@ -74,6 +85,7 @@ else:
 
 
 def iter_children_func(node):
+  # type: (Module) -> Callable
   """
   Returns a function which yields all direct children of a AST node,
   skipping children that are singleton nodes.
@@ -83,6 +95,7 @@ def iter_children_func(node):
 
 
 def iter_children_astroid(node):
+  # type: (NodeNG) -> Union[Iterator, List]
   # Don't attempt to process children of JoinedStr nodes, which we can't fully handle yet.
   if is_joined_str(node):
     return []
@@ -94,6 +107,7 @@ SINGLETONS = {c for n, c in iteritems(ast.__dict__) if isinstance(c, type) and
               issubclass(c, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop))}
 
 def iter_children_ast(node):
+  # type: (NodeNG) -> Iterator[Union[AST, expr]]
   # Don't attempt to process children of JoinedStr nodes, which we can't fully handle yet.
   if is_joined_str(node):
     return
@@ -124,18 +138,22 @@ expr_class_names = ({n for n, c in iteritems(ast.__dict__)
 # These feel hacky compared to isinstance() but allow us to work with both ast and astroid nodes
 # in the same way, and without even importing astroid.
 def is_expr(node):
+  # type: (NodeNG) -> bool
   """Returns whether node is an expression node."""
   return node.__class__.__name__ in expr_class_names
 
 def is_stmt(node):
+  # type: (NodeNG) -> bool
   """Returns whether node is a statement node."""
   return node.__class__.__name__ in stmt_class_names
 
 def is_module(node):
+  # type: (NodeNG) -> bool
   """Returns whether node is a module node."""
   return node.__class__.__name__ == 'Module'
 
 def is_joined_str(node):
+  # type: (NodeNG) -> bool
   """Returns whether node is a JoinedStr node, used to represent f-strings."""
   # At the moment, nodes below JoinedStr have wrong line/col info, and trying to process them only
   # leads to errors.
@@ -143,11 +161,13 @@ def is_joined_str(node):
 
 
 def is_starred(node):
+  # type: (NodeNG) -> bool
   """Returns whether node is a starred expression node."""
   return node.__class__.__name__ == 'Starred'
 
 
 def is_slice(node):
+  # type: (NodeNG) -> bool
   """Returns whether node represents a slice, e.g. `1:2` in `x[1:2]`"""
   # Before 3.9, a tuple containing a slice is an ExtSlice,
   # but this was removed in https://bugs.python.org/issue34822
@@ -163,7 +183,11 @@ def is_slice(node):
 # Sentinel value used by visit_tree().
 _PREVISIT = object()
 
-def visit_tree(node, previsit, postvisit):
+def visit_tree(node,  # type: Module
+               previsit,  # type: Callable[[NodeNG, Optional[Token]], Tuple[Optional[Token], Optional[Token]]]
+               postvisit,  # type: Optional[Callable[[NodeNG, Optional[Token], Optional[Token]], None]]
+               ):
+  # type: (...) -> None
   """
   Scans the tree under the node depth-first using an explicit stack. It avoids implicit recursion
   via the function call stack to avoid hitting 'maximum recursion depth exceeded' error.
@@ -186,7 +210,7 @@ def visit_tree(node, previsit, postvisit):
   iter_children = iter_children_func(node)
   done = set()
   ret = None
-  stack = [(node, None, _PREVISIT)]
+  stack = [(node, None, _PREVISIT)] # type: List[Tuple[NodeNG, Optional[Token], Union[Optional[Token], object]]]
   while stack:
     current, par_value, value = stack.pop()
     if value is _PREVISIT:
@@ -201,12 +225,13 @@ def visit_tree(node, previsit, postvisit):
       for n in iter_children(current):
         stack.insert(ins, (n, pvalue, _PREVISIT))
     else:
-      ret = postvisit(current, par_value, value)
+      ret = postvisit(current, par_value, cast(Optional[Token], value))
   return ret
 
 
 
 def walk(node):
+  # type: (Module) -> Iterator[Module]
   """
   Recursively yield all descendant nodes in the tree starting at ``node`` (including ``node``
   itself), using depth-first pre-order traversal (yieling parents before their children).
@@ -232,6 +257,7 @@ def walk(node):
 
 
 def replace(text, replacements):
+  # type: (str, List[Tuple[int, int, str]]) -> str
   """
   Replaces multiple slices of text with new values. This is a convenience method for making code
   modifications of ranges e.g. as identified by ``ASTTokens.get_text_range(node)``. Replacements is
@@ -255,9 +281,11 @@ class NodeMethods(object):
   Helper to get `visit_{node_type}` methods given a node's class and cache the results.
   """
   def __init__(self):
-    self._cache = {}
+    # type: () -> None
+    self._cache: Dict[Union[ABCMeta, type], Callable[[NodeNG, Token, Token], Tuple[Token, Token]]] = {}
 
   def get(self, obj, cls):
+    # type: (MarkTokens, Union[ABCMeta, type]) -> Callable
     """
     Using the lowercase name of the class as node_type, returns `obj.visit_{node_type}`,
     or `obj.visit_default` if the type-specific method is not found.
