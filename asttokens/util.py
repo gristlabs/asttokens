@@ -282,7 +282,7 @@ class NodeMethods(object):
   """
   def __init__(self):
     # type: () -> None
-    self._cache: Dict[Union[ABCMeta, type], Callable[[NodeNG, Token, Token], Tuple[Token, Token]]] = {}
+    self._cache = {} # type: Dict[Union[ABCMeta, type], Callable[[NodeNG, Token, Token], Tuple[Token, Token]]]
 
   def get(self, obj, cls):
     # type: (MarkTokens, Union[ABCMeta, type]) -> Callable

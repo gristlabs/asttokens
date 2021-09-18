@@ -32,7 +32,7 @@ class LineNumbers(object):
     self._line_offsets = [m.start(0) for m in _line_start_re.finditer(text)]
     self._text = text
     self._text_len = len(text)
-    self._utf8_offset_cache: Dict[int, List[int]] = {}    # maps line num to list of char offset for each byte in line
+    self._utf8_offset_cache = {} # type: Dict[int, List[int]] # maps line num to list of char offset for each byte in line
 
   def from_utf8_col(self, line, utf8_column):
     # type: (int, int) -> int
