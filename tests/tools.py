@@ -74,10 +74,11 @@ class MarkChecker(object):
       if not (
           util.is_stmt(node) or
           util.is_expr(node) or
-          util.is_module(node)
-        # In 3.9+, slices are now expressions in the AST, but of course their source code
-        # can't be parsed
-      ) or util.is_slice(node):
+          util.is_module(node)):
+        continue
+
+      # slices currently only get the correct tokens for ast, not astroid.
+      if util.is_slice(node) and test_case.is_astroid_test:
         continue
 
       text = self.atok.get_text(node)

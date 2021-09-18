@@ -151,7 +151,7 @@ b +     # line3
     'astroid/email.py':               ( 3,    3,    1,    1,   ),
     'astroid/format.py':              ( 64,   61,   62,   62,  ),
     'astroid/module.py':              ( 185,  174,  171,  171, ),
-    'astroid/module2.py':             ( 248,  253,  240,  253, ),
+    'astroid/module2.py':             ( 248,  255,  240,  253, ),
     'astroid/noendingnewline.py':     ( 57,   59,   57,   63,  ),
     'astroid/notall.py':              ( 15,   17,   15,   17,  ),
     'astroid/recursion.py':           ( 6,    6,    4,    4,   ),
@@ -729,11 +729,14 @@ partial_sums = [total := total + v for v in values]
     # string contained in an astroid.Const or astroid.Expr it will end up in the doc attribute and be
     # a pain to extract for comparison
     # For starred expressions, e.g. `*args`, we wrap it in a function call to make it parsable.
+    # For slices, e.g. `x:`, we wrap it in an indexing expression to make it parsable.
     indented = re.match(r'^[ \t]+\S', text)
     if indented:
       return self.module.parse('def dummy():\n' + text).body[0].body[0]
     if util.is_starred(node):
       return self.module.parse('f(' + text + ')').body[0].value.args[0]
+    if util.is_slice(node):
+      return self.module.parse('a[' + text + ']').body[0].value.slice
     if util.is_expr(node):
       return self.module.parse('_\n(' + text + ')').body[1].value
     if util.is_module(node):
