@@ -5,7 +5,9 @@ import astroid
 from astroid.node_classes import NodeNG
 
 from asttokens import ASTTokens
-from . import tools, test_mark_tokens
+from . import test_mark_tokens
+import six
+import pytest
 
 
 class TestAstroid(test_mark_tokens.TestMarkTokens):
