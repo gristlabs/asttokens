@@ -17,12 +17,17 @@ import bisect
 import token
 import tokenize
 import io
-from astroid import NodeNG # type: ignore[import]
+from .util import Token, match_token, is_non_coding_token
 import six
+if six.PY3:
+  from astroid import NodeNG # type: ignore[import]
+else:
+  # hacky workaround, mostly for typing checks
+  class NodeNG:
+    first_token = Token()
+    last_token = Token()
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
-from .util import Token, match_token, is_non_coding_token
-from .util import Token
 from typing import Iterator, List, Optional, Tuple
 from ast import Module
 

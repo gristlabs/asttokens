@@ -17,7 +17,7 @@ import collections
 import token
 from six import iteritems
 from abc import ABCMeta
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 from ast import Module, expr, AST
 from astroid import NodeNG # type: ignore[import]
 
@@ -284,8 +284,7 @@ class NodeMethods(object):
     self._cache = {} # type: Dict[Union[ABCMeta, type], Callable[[NodeNG, Token, Token], Tuple[Token, Token]]]
 
   def get(self, obj, cls):
-    from asttokens.mark_tokens import MarkTokens
-    # type: (MarkTokens, Union[ABCMeta, type]) -> Callable
+    # type: (Any, Union[ABCMeta, type]) -> Callable
     """
     Using the lowercase name of the class as node_type, returns `obj.visit_{node_type}`,
     or `obj.visit_default` if the type-specific method is not found.
