@@ -15,11 +15,11 @@
 import numbers
 import sys
 import token
-from astroid import NodeNG # type: ignore[import]
 
 import six
 
 from . import util
+from .util import NodeNG
 from .asttokens import ASTTokens
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple

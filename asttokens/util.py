@@ -15,11 +15,15 @@
 import ast
 import collections
 import token
-from six import iteritems
+from six import PY3, iteritems
 from abc import ABCMeta
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 from ast import Module, expr, AST
-from astroid import NodeNG # type: ignore[import]
+
+if PY3:
+  from astroid import NodeNG # type: ignore[import]
+else:
+  from astroid.node_classes import NodeNG
 
 
 def token_repr(tok_type, string):
