@@ -22,9 +22,8 @@ import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token, is_non_coding_token
-from .mark_tokens import MarkTokens
-from asttokens.util import Token
-from typing import Iterator, List, Optional, Tuple, Union
+from .util import Token
+from typing import Iterator, List, Optional, Tuple
 from ast import Module
 
 class ASTTokens(object):
@@ -79,6 +78,7 @@ class ASTTokens(object):
     ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
     """
     # The hard work of this class is done by MarkTokens
+    from .mark_tokens import MarkTokens # to avoid import loops
     MarkTokens(self).visit_tree(root_node)
 
 
