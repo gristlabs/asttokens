@@ -44,7 +44,7 @@ jobs:
           # mv ./dist/*.whl $WHLNAME
           # pip install --upgrade --pre "$WHLNAME[test]"
           pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
-          pip install .
+          pip install .[test]
 
       - name: Test with pytest
         run: |
