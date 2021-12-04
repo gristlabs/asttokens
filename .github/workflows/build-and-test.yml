@@ -22,7 +22,7 @@ jobs:
           - pypy3
     env:
       # TODO test with this env var; enable if reasonable, or add comment why not.
-      # ASTTOKENS_SLOW_TESTS: 1
+      ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
 
     steps:
