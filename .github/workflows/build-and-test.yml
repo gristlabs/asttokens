@@ -1,5 +1,9 @@
 name: Build and test
-on: [push]
+on:
+  push:
+    branches:
+      - master
+  pull_requests:
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,6 +17,7 @@ jobs:
           - 3.7
           - 3.8
           - 3.9
+          - 3.10-dev
           - pypy2
           - pypy3
     env:
