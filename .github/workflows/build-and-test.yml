@@ -17,10 +17,11 @@ jobs:
           - 3.7
           - 3.8
           - 3.9
-          - 3.10-dev
+          - 3.10
           - pypy2
           - pypy3
     env:
+      # TODO test with this env var; enable if reasonable, or add comment why not.
       # ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
 
@@ -34,13 +35,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade setuptools>=44 wheel setuptools_scm[toml]>=3.4.3 pep517
-          pip install --upgrade coverage
-          # python3 -m pep517.build . # replace the following command with this one when you drop python 2
-          python ./setup.py bdist_wheel
-          export WHLNAME=./dist/asttokens-0.CI-py2.py3-none-any.whl
-          mv ./dist/*.whl $WHLNAME
-          pip install --upgrade --pre "$WHLNAME[test]"
+          # TODO Remove the commented-out lines if it works.
+          # pip install --upgrade setuptools>=44 wheel setuptools_scm[toml]>=3.4.3 pep517
+          # pip install --upgrade coverage
+          # # python3 -m pep517.build . # replace the following command with this one when you drop python 2
+          # python ./setup.py bdist_wheel
+          # export WHLNAME=./dist/asttokens-0.CI-py2.py3-none-any.whl
+          # mv ./dist/*.whl $WHLNAME
+          # pip install --upgrade --pre "$WHLNAME[test]"
+          pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
+          pip install .
 
       - name: Test with pytest
         run: |
