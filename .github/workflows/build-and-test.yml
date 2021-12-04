@@ -53,12 +53,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-
       - name: Coveralls Finished
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          pip3 install --upgrade coveralls
-          python3 -m coveralls --service=github --finish
+        uses: AndreMiras/coveralls-python-action@v20201129
+        with:
+          parallel-finished: true
