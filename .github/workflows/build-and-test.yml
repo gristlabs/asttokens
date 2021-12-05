@@ -21,10 +21,7 @@ jobs:
           - pypy2
           - pypy3
     env:
-      # ASTTOKENS_SLOW_TESTS verify the library on all source files from
-      # sys.modules. This makes the tests take several times longer, but adds
-      # almost benefit in terms of increased coverage, so disabled normally.
-      # ASTTOKENS_SLOW_TESTS: 1
+      ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
 
     steps:
