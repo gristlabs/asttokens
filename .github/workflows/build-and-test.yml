@@ -1,0 +1,59 @@
+name: Build and test
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - 2.7
+          - 3.5
+          - 3.6
+          - 3.7
+          - 3.8
+          - 3.9
+          - '3.10'
+          - pypy2
+          - pypy3
+    env:
+      ASTTOKENS_SLOW_TESTS: 1
+      COVERALLS_PARALLEL: true
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
+          pip install .[test]
+
+      - name: Test with pytest
+        run: |
+          coverage run --branch --include='asttokens/*' -m pytest --junitxml=./rspec.xml
+          coverage report -m
+
+      - name: Collect coverage results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pip3 install --upgrade coveralls
+          python3 -m coveralls --service=github
+
+  finish:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Coveralls Finished
+        uses: AndreMiras/coveralls-python-action@v20201129
+        with:
+          parallel-finished: true
