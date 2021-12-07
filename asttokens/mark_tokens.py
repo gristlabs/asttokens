@@ -263,6 +263,25 @@ class MarkTokens(object):
     last_token = self.handle_following_brackets(node, last_token, '[')
     return (first_token, last_token)
 
+  def visit_slice(self, node, first_token, last_token):
+    # consume `:` tokens to the left and right. In Python 3.9, Slice nodes are
+    # given a col_offset, (and end_col_offset), so this will always start inside
+    # the slice, even if it is the empty slice. However, in 3.8 and below, this
+    # will only expand to the full slice if the slice contains a node with a
+    # col_offset. So x[:] will only get the correct tokens in 3.9, but x[1:] and
+    # x[:1] will even on earlier versions of Python.
+    while True:
+      prev = self._code.prev_token(first_token)
+      if prev.string != ':':
+        break
+      first_token = prev
+    while True:
+      next_ = self._code.next_token(last_token)
+      if next_.string != ':':
+        break
+      last_token = next_
+    return (first_token, last_token)
+
   def handle_bare_tuple(self, node, first_token, last_token):
     # type: (util.Token, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
