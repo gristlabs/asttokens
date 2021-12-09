@@ -6,8 +6,6 @@ from astroid.node_classes import NodeNG
 
 from asttokens import ASTTokens
 from . import test_mark_tokens
-import six
-import pytest
 
 
 class TestAstroid(test_mark_tokens.TestMarkTokens):
@@ -39,7 +37,3 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
     builder = astroid.builder.AstroidBuilder()
     tree = builder.string_build(source)
     return ASTTokens(source, tree=tree)
-
-  def test_complex_numbers(self):
-    if six.PY2:
-      pytest.skip("Complex number support parsing fails in astroid on Python 2.x")
