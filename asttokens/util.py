@@ -68,7 +68,7 @@ def expect_token(token, tok_type, tok_str=None):
 
 # These were previously defined in tokenize.py and distinguishable by being greater than
 # token.N_TOKEN. As of python3.7, they are in token.py, and we check for them explicitly.
-if sys.version_info < (3, 7):
+if sys.version_info >= (3, 7):
   def is_non_coding_token(token_type):
     # type: (int) -> bool
     """
