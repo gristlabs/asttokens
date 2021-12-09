@@ -42,7 +42,7 @@ jobs:
           pip install types-six mypy==0.910
           python -m mypy asttokens        
         # fromJson because https://github.community/t/passing-an-array-literal-to-contains-function-causes-syntax-error/17213/3
-        if: ${{ !contains(fromJson('["2.7", "pypy2", "pypy3"]')', matrix.python-version)}}
+        if: ${{ !contains(fromJson('["2.7", "pypy2", "pypy3"]')'), matrix.python-version) }}
         # pypy3 will work when 3.8 comes out. See https://github.com/python/typed_ast/issues/111#issuecomment-872093943
         # 2.7 is tested separately in mypy-py2, as we need to run mypy under Python 3.x
 
