@@ -39,9 +39,11 @@ jobs:
 
       - name: Mypy testing
         run: |
-          # Install 0.910 where we've got it, an earlier version where not (e.g Python 2.7)
-          pip install types-six "mypy<=0.910"
+          pip install types-six mypy==0.910
           python -m mypy asttokens
+        if: ${{ !contains(["2.7", "pypy2", "pypy3"], matrix.python-version)}}
+        # pypy3 will work when 3.8 comes out. See https://github.com/python/typed_ast/issues/111#issuecomment-872093943
+        # 2.7 is tested separately in mypy-py2, as we need to run mypy under Python 3.x
 
       - name: Test with pytest
         run: |
@@ -54,6 +56,27 @@ jobs:
         run: |
           pip3 install --upgrade coveralls
           python3 -m coveralls --service=github
+
+  # Can't run mypy on Python 2.7, but can run it in Python 2 mode
+  mypy-py2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade setuptools setuptools_scm pep517
+          pip install .[test]
+          pip install types-six mypy==0.910
+
+      - name: Mypy testing for Python 2
+        run: |
+          python -m mypy --py2 asttokens  
 
   finish:
     needs: test

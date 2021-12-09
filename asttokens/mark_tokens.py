@@ -180,9 +180,11 @@ class MarkTokens(object):
   if six.PY2:
     # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
     def visit_setcomp(self, node, first_token, last_token):
+      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('{', node, first_token, last_token)
 
     def visit_dictcomp(self, node, first_token, last_token):
+      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('{', node, first_token, last_token)
 
   def visit_comprehension(self,
@@ -427,6 +429,7 @@ class MarkTokens(object):
   if six.PY2:
     # No need for this on Python3, which already handles 'with' nodes correctly.
     def visit_with(self, node, first_token, last_token):
+      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
       return (first, last_token)
 
