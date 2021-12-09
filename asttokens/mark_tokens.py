@@ -174,6 +174,7 @@ class MarkTokens(object):
   # https://bugs.python.org/issue31241
   if sys.version_info < (3, 8):
     def visit_listcomp(self, node, first_token, last_token):
+      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('[', node, first_token, last_token)
 
   if six.PY2:
