@@ -264,6 +264,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_slice(self, node, first_token, last_token):
+    # type: (util.Token, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # consume `:` tokens to the left and right. In Python 3.9, Slice nodes are
     # given a col_offset, (and end_col_offset), so this will always start inside
     # the slice, even if it is the empty slice. However, in 3.8 and below, this

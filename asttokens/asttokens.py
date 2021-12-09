@@ -51,8 +51,7 @@ class ASTTokens(object):
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,
     # we'll fail with a unicode error here.)
-    if isinstance(source_text, six.binary_type):
-      source_text = source_text.decode('utf8')
+    source_text = six.ensure_str(source_text)
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
@@ -87,7 +86,7 @@ class ASTTokens(object):
     """
     # This is technically an undocumented API for Python3, but allows us to use the same API as for
     # Python2. See http://stackoverflow.com/a/4952291/328565.
-    for index, tok in enumerate(tokenize.generate_tokens(io.StringIO(text).readline)):
+    for index, tok in enumerate(tokenize.generate_tokens(lambda **x: io.StringIO(text).readline())):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,
                   self._line_numbers.line_to_offset(start[0], start[1]),

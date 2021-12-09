@@ -37,6 +37,11 @@ jobs:
           pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
           pip install .[test]
 
+      - name: Mypy testing
+        run: |
+          pip install types-six mypy==0.910
+          python -m mypy asttokens
+
       - name: Test with pytest
         run: |
           coverage run --branch --include='asttokens/*' -m pytest --junitxml=./rspec.xml
