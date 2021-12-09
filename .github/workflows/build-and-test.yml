@@ -40,7 +40,7 @@ jobs:
       - name: Mypy testing
         run: |
           # Install 0.910 where we've got it, an earlier version where not (e.g Python 2.7)
-          pip install types-six mypy<=0.910 
+          pip install types-six "mypy<=0.910"
           python -m mypy asttokens
 
       - name: Test with pytest
