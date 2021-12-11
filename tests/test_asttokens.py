@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
+import pytest
 import six
 import token
 import tokenize
 import unittest
 from .context import asttokens
-from . import tools
 
 class TestASTTokens(unittest.TestCase):
 
@@ -80,6 +80,8 @@ class TestASTTokens(unittest.TestCase):
     self.assertTrue(token.ISEOF(atok.find_token(atok.tokens[5], tokenize.NL).type))
 
   def test_unicode_offsets(self):
+    if six.PY2:
+      pytest.skip("Unicode parsing is different on Python 2")    
     # ast modules provides utf8 offsets, while tokenize uses unicode offsets. Make sure we
     # translate correctly.
     source = "foo('фыва',a,b)\n"
