@@ -85,7 +85,7 @@ class ASTTokens(object):
     """
     # This is technically an undocumented API for Python3, but allows us to use the same API as for
     # Python2. See http://stackoverflow.com/a/4952291/328565.
-    for index, tok in enumerate(tokenize.generate_tokens(lambda **x: six.StringIO(text).readline())):
+    for index, tok in enumerate(tokenize.generate_tokens(six.StringIO(text).readline)):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,
                   self._line_numbers.line_to_offset(start[0], start[1]),
