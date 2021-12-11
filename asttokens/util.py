@@ -183,11 +183,8 @@ def is_slice(node):
 # Sentinel value used by visit_tree().
 _PREVISIT = object()
 
-def visit_tree(node,  # type: Module
-               previsit,  # type: Callable[[NodeNG, Optional[Token]], Tuple[Optional[Token], Optional[Token]]]
-               postvisit,  # type: Optional[Callable[[NodeNG, Optional[Token], Optional[Token]], None]]
-               ):
-  # type: (...) -> None
+def visit_tree(node, previsit, postvisit):
+  # type: (Module, Callable[[NodeNG, Optional[Token]], Tuple[Optional[Token], Optional[Token]]], Optional[Callable[[NodeNG, Optional[Token], Optional[Token]], None]])   -> None
   """
   Scans the tree under the node depth-first using an explicit stack. It avoids implicit recursion
   via the function call stack to avoid hitting 'maximum recursion depth exceeded' error.
