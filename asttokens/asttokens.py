@@ -193,7 +193,7 @@ class ASTTokens(object):
         yield self._tokens[i]
 
   def get_tokens(self, node, include_extra=False):
-    # type: (NodeNG, bool) -> Iterator
+    # type: (NodeNG, bool) -> Iterator[Token]
     """
     Yields all tokens making up the given node. If include_extra is True, includes non-coding
     tokens such as tokenize.NL and .COMMENT.
