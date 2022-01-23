@@ -21,7 +21,7 @@ from .util import Token, match_token, is_non_coding_token, NodeNG
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
-from typing import Iterator, List, Optional, Tuple
+from typing import Callable, Iterator, List, Optional, Tuple, Any, cast
 from ast import Module
 
 class ASTTokens(object):
@@ -44,14 +44,17 @@ class ASTTokens(object):
   tree created separately.
   """
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
-    # type: (str, bool, Optional[Module], str) -> None
+    # type: (Any, bool, Optional[Module], str) -> None
+    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
     self._filename = filename
     self._tree = ast.parse(source_text, filename) if parse else tree
 
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,
     # we'll fail with a unicode error here.)
-    source_text = six.ensure_str(source_text)
+    source_text = six.ensure_text(source_text)
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
@@ -86,7 +89,8 @@ class ASTTokens(object):
     """
     # This is technically an undocumented API for Python3, but allows us to use the same API as for
     # Python2. See http://stackoverflow.com/a/4952291/328565.
-    for index, tok in enumerate(tokenize.generate_tokens(six.StringIO(text).readline)):
+    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
+    for index, tok in enumerate(tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,
                   self._line_numbers.line_to_offset(start[0], start[1]),
