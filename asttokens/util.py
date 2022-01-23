@@ -228,7 +228,7 @@ def visit_tree(node, previsit, postvisit):
 
 
 def walk(node):
-  # type: (Module) -> Iterator[Module]
+  # type: (Module) -> Iterator[Union[Module, AST, NodeNG]]
   """
   Recursively yield all descendant nodes in the tree starting at ``node`` (including ``node``
   itself), using depth-first pre-order traversal (yieling parents before their children).
