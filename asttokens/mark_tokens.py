@@ -360,7 +360,7 @@ class MarkTokens(object):
 
   def handle_num(self,
                  node,  # type: NodeNG
-                 value,  # type: Union[complex, int, numbers.Real]
+                 value,  # type: Union[complex, int, numbers.Number]
                  first_token,  # type: util.Token
                  last_token,  # type: util.Token
                  ):
@@ -376,7 +376,7 @@ class MarkTokens(object):
       value = value.imag
 
     # This makes sure that the - is included
-    if value < 0 and first_token.type == token.NUMBER:
+    if value < 0 and first_token.type == token.NUMBER: # type: ignore[operator]
         first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
 
@@ -387,7 +387,7 @@ class MarkTokens(object):
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    if isinstance(node.value, numbers.Real):
+    if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, (six.text_type, six.binary_type)):
       return self.visit_str(node, first_token, last_token)
