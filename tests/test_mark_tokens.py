@@ -15,7 +15,6 @@ from time import time
 import astroid
 import six
 from asttokens import util, ASTTokens
-import pytest
 
 from . import tools
 
@@ -561,8 +560,6 @@ if 2: a; b; # comment3
 
 
   def test_complex_numbers(self):
-    if six.PY2:
-      pytest.skip("Complex number parsing is different on Python 2")
     source = """
 1
 -1
