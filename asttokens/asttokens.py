@@ -17,7 +17,8 @@ import bisect
 import io
 import token
 import tokenize
-from .util import Token, match_token, is_non_coding_token, NodeNG
+from .util import Token, match_token, is_non_coding_token
+from astroid.node_classes import NodeNG # type: ignore[import]
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
