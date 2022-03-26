@@ -22,9 +22,6 @@ from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast,
 from ast import Module, expr, AST
 from astroid.node_classes import NodeNG # type: ignore[import]
 
-AstNode = Union[AST, NodeNG]
-
-
 def token_repr(tok_type, string):
   # type: (int, Optional[str]) -> str
   """Returns a human-friendly representation of a token with the given type and string."""
@@ -49,6 +46,18 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
   def __str__(self):
     # type: () -> str
     return token_repr(self.type, self.string)
+
+
+# Type class used to expand out the definition of AST to include fields added by this library
+# It's not actually used for anything other than type checking though!
+class EnhancedAST(AST):
+  # Additional attributes set by mark_tokens
+  first_token = None # type: Token 
+  last_token = None # type: Token
+  lineno = 0 # type: int
+
+
+AstNode = Union[EnhancedAST, NodeNG]
 
 
 def match_token(token, tok_type, tok_str=None):

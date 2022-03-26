@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import ast
 import numbers
 import sys
 import token
@@ -19,10 +20,11 @@ import token
 import six
 
 from . import util
-from .util import NodeNG
+from .util import AstNode
 from .asttokens import ASTTokens
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple
+import astroid.node_classes as nc # type: ignore[import]
 
 # Mapping of matching braces. To find a token here, look up token[:2].
 _matching_pairs_left = {
@@ -55,7 +57,7 @@ class MarkTokens(object):
     util.visit_tree(node, self._visit_before_children, self._visit_after_children)
 
   def _visit_before_children(self, node, parent_token):
-    # type: (NodeNG, Optional[util.Token]) -> Tuple[Optional[util.Token], Optional[util.Token]]
+    # type: (AstNode, Optional[util.Token]) -> Tuple[Optional[util.Token], Optional[util.Token]]
     col = getattr(node, 'col_offset', None)
     token = self._code.get_token_from_utf8(node.lineno, col) if col is not None else None
 
@@ -68,7 +70,7 @@ class MarkTokens(object):
     return (token or parent_token, token)
 
   def _visit_after_children(self, node, parent_token, token):
-    # type: (NodeNG, Optional[util.Token], Optional[util.Token]) -> None
+    # type: (AstNode, Optional[util.Token], Optional[util.Token]) -> None
     # This processes the node generically first, after all children have been processed.
 
     # Get the first and last tokens that belong to children. Note how this doesn't assume that we
@@ -116,7 +118,7 @@ class MarkTokens(object):
     return self._code.prev_token(t)
 
   def _expand_to_matching_pairs(self, first_token, last_token, node):
-    # type: (util.Token, util.Token, NodeNG) -> Tuple[util.Token, util.Token]
+    # type: (util.Token, util.Token, AstNode) -> Tuple[util.Token, util.Token]
     """
     Scan tokens in [first_token, last_token] range that are between node's children, and for any
     unmatched brackets, adjust first/last tokens to include the closing pair.
@@ -157,13 +159,13 @@ class MarkTokens(object):
   # that will actually be assigned.
 
   def visit_default(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # pylint: disable=no-self-use
     # By default, we don't need to adjust the token we computed earlier.
     return (first_token, last_token)
 
   def handle_comp(self, open_brace, node, first_token, last_token):
-    # type: (str, NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (str, AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # For list/set/dict comprehensions, we only get the token of the first child, so adjust it to
     # include the opening brace (the closing brace will be matched automatically).
     before = self._code.prev_token(first_token)
@@ -174,21 +176,21 @@ class MarkTokens(object):
   # https://bugs.python.org/issue31241
   if sys.version_info < (3, 8):
     def visit_listcomp(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('[', node, first_token, last_token)
 
   if six.PY2:
     # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
     def visit_setcomp(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('{', node, first_token, last_token)
 
     def visit_dictcomp(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('{', node, first_token, last_token)
 
   def visit_comprehension(self,
-                          node,  # type: NodeNG
+                          node,  # type: AstNode
                           first_token,  # type: util.Token
                           last_token,  # type: util.Token
                           ):
@@ -205,7 +207,7 @@ class MarkTokens(object):
     return first_token, last_token
 
   def handle_attr(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # Attribute node has ".attr" (2 tokens) after the last child.
     dot = self._code.find_token(last_token, token.OP, '.')
     name = self._code.next_token(dot)
@@ -217,10 +219,10 @@ class MarkTokens(object):
   visit_delattr = handle_attr
 
   def handle_def(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
-    if not node.body and getattr(node, 'doc', None):
+    if not getattr(node, 'body', None) and getattr(node, 'doc', None):
       last_token = self._code.find_token(last_token, token.STRING)
 
     # Include @ from decorator
@@ -234,7 +236,7 @@ class MarkTokens(object):
   visit_functiondef = handle_def
 
   def handle_following_brackets(self, node, last_token, opening_bracket):
-    # type: (NodeNG, util.Token, str) -> util.Token
+    # type: (AstNode, util.Token, str) -> util.Token
     # This is for calls and subscripts, which have a pair of brackets
     # at the end which may contain no nodes, e.g. foo() or bar[:].
     # We look for the opening bracket and then let the matching pair be found automatically
@@ -258,7 +260,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_subscript(self,
-                      node,  # type: NodeNG
+                      node,  # type: AstNode
                       first_token,  # type: util.Token
                       last_token,  # type: util.Token
                       ):
@@ -267,7 +269,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_slice(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # consume `:` tokens to the left and right. In Python 3.9, Slice nodes are
     # given a col_offset, (and end_col_offset), so this will always start inside
     # the slice, even if it is the empty slice. However, in 3.8 and below, this
@@ -287,7 +289,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def handle_bare_tuple(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # A bare tuple doesn't include parens; if there is a trailing comma, make it part of the tuple.
     maybe_comma = self._code.next_token(last_token)
     if util.match_token(maybe_comma, token.OP, ','):
@@ -297,7 +299,7 @@ class MarkTokens(object):
   if sys.version_info >= (3, 8):
     # In Python3.8 parsed tuples include parentheses when present.
     def handle_tuple_nonempty(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       # It's a bare tuple if the first token belongs to the first child. The first child may
       # include extraneous parentheses (which don't create new nodes), so account for those too.
       child = node.elts[0]
@@ -308,13 +310,14 @@ class MarkTokens(object):
   else:
     # Before python 3.8, parsed tuples do not include parens.
     def handle_tuple_nonempty(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
       return self._gobble_parens(first_token, last_token, False)
 
   def visit_tuple(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    if not node.elts:
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    assert isinstance(node, ast.Tuple) or isinstance(node, nc._BaseContainer)
+    if node.elts:
       # An empty tuple is just "()", and we need no further info.
       return (first_token, last_token)
     return self.handle_tuple_nonempty(node, first_token, last_token)
@@ -334,11 +337,11 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_str(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     return self.handle_str(first_token, last_token)
 
   def visit_joinedstr(self,
-                      node,  # type: NodeNG
+                      node,  # type: AstNode
                       first_token,  # type: util.Token
                       last_token,  # type: util.Token
                       ):
@@ -346,7 +349,7 @@ class MarkTokens(object):
     return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     return self.handle_str(first_token, last_token)
 
   def handle_str(self, first_token, last_token):
@@ -359,7 +362,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def handle_num(self,
-                 node,  # type: NodeNG
+                 node,  # type: AstNode
                  value,  # type: Union[complex, int, numbers.Number]
                  first_token,  # type: util.Token
                  last_token,  # type: util.Token
@@ -381,12 +384,13 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_num(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    return self.handle_num(node, node.n, first_token, last_token)
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    return self.handle_num(node, cast(ast.Num, node).n, first_token, last_token)
 
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    assert isinstance(node, nc.Const)
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, (six.text_type, six.binary_type)):
@@ -399,9 +403,10 @@ class MarkTokens(object):
   visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # Until python 3.9 (https://bugs.python.org/issue40141),
     # ast.keyword nodes didn't have line info. Astroid has lineno None.
+    assert isinstance(node, ast.keyword) or isinstance(node, nc.Keyword)
     if node.arg is not None and getattr(node, 'lineno', None) is None:
       equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
       name = self._code.prev_token(equals)
@@ -410,7 +415,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_starred(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # Astroid has 'Starred' nodes (for "foo(*bar)" type args), but they need to be adjusted.
     if not util.match_token(first_token, token.OP, '*'):
       star = self._code.prev_token(first_token)
@@ -419,7 +424,7 @@ class MarkTokens(object):
     return (first_token, last_token)
 
   def visit_assignname(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # Astroid may turn 'except' clause into AssignName, but we need to adjust it.
     if util.match_token(first_token, token.NAME, 'except'):
       colon = self._code.find_token(last_token, token.OP, ':')
@@ -429,7 +434,7 @@ class MarkTokens(object):
   if six.PY2:
     # No need for this on Python3, which already handles 'with' nodes correctly.
     def visit_with(self, node, first_token, last_token):
-      # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
       return (first, last_token)
 
@@ -438,7 +443,7 @@ class MarkTokens(object):
   # AsyncFunctionDef is slightly different because it might have
   # decorators before that, which visit_functiondef handles
   def handle_async(self, node, first_token, last_token):
-    # type: (NodeNG, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     if not first_token.string == 'async':
       first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
@@ -447,7 +452,7 @@ class MarkTokens(object):
   visit_asyncwith = handle_async
 
   def visit_asyncfunctiondef(self,
-                             node,  # type: NodeNG
+                             node,  # type: AstNode
                              first_token,  # type: util.Token
                              last_token,  # type: util.Token
                              ):

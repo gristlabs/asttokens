@@ -17,8 +17,7 @@ import bisect
 import io
 import token
 import tokenize
-from .util import Token, match_token, is_non_coding_token
-from astroid.node_classes import NodeNG # type: ignore[import]
+from .util import Token, match_token, is_non_coding_token, AstNode
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
@@ -199,15 +198,15 @@ class ASTTokens(object):
         yield self._tokens[i]
 
   def get_tokens(self, node, include_extra=False):
-    # type: (NodeNG, bool) -> Iterator[Token]
+    # type: (AstNode, bool) -> Iterator[Token]
     """
     Yields all tokens making up the given node. If include_extra is True, includes non-coding
     tokens such as tokenize.NL and .COMMENT.
     """
-    return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
+    return self.token_range(cast(Token, node.first_token), cast(Token, node.last_token), include_extra=include_extra)
 
   def get_text_range(self, node):
-    # type: (NodeNG) -> Tuple[int, int]
+    # type: (AstNode) -> Tuple[int, int]
     """
     After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
     corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
@@ -224,7 +223,7 @@ class ASTTokens(object):
     return (start, node.last_token.endpos)
 
   def get_text(self, node):
-    # type: (NodeNG) -> str
+    # type: (AstNode) -> str
     """
     After mark_tokens() has been called, returns the text corresponding to the given node. Returns
     '' for nodes (like `Load`) that don't correspond to any particular text.
