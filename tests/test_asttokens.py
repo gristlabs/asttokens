@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
-import pytest
 import six
 import token
 import tokenize
