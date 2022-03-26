@@ -20,7 +20,7 @@ import token
 import six
 
 from . import util
-from .util import AstNode
+from .util import AstConstant, AstNode
 from .asttokens import ASTTokens
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple
@@ -318,7 +318,7 @@ class MarkTokens(object):
   def visit_tuple(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     assert isinstance(node, ast.Tuple) or isinstance(node, nc._BaseContainer)
-    if node.elts:
+    if not node.elts:
       # An empty tuple is just "()", and we need no further info.
       return (first_token, last_token)
     return self.handle_tuple_nonempty(node, first_token, last_token)
@@ -391,7 +391,7 @@ class MarkTokens(object):
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    assert isinstance(node, nc.Const)
+    assert isinstance(node, AstConstant) or isinstance(node, nc.Const)
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, (six.text_type, six.binary_type)):

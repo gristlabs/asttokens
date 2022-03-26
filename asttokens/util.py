@@ -16,7 +16,7 @@ import ast
 import collections
 import token
 import sys
-from six import iteritems
+from six import iteritems, PY3
 from abc import ABCMeta
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 from ast import Module, expr, AST
@@ -55,6 +55,13 @@ class EnhancedAST(AST):
   first_token = None # type: Token 
   last_token = None # type: Token
   lineno = 0 # type: int
+
+
+if PY3:
+  AstConstant = ast.Constant
+else:
+  class AstConstant:
+    value = object()
 
 
 AstNode = Union[EnhancedAST, NodeNG]
