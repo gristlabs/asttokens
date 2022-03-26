@@ -73,7 +73,7 @@ jobs:
         run: |
           pip install --upgrade setuptools setuptools_scm pep517
           pip install .[test]
-          pip install types-six mypy[python2]==0.910
+          pip install types-six==1.16.10 mypy[python2]==0.910
 
       - name: Mypy testing for Python 2
         run: |
