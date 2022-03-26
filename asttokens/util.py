@@ -109,7 +109,7 @@ SINGLETONS = {c for n, c in iteritems(ast.__dict__) if isinstance(c, type) and
               issubclass(c, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop))}
 
 def iter_children_ast(node):
-  # type: (AstNode) -> Iterator[Union[AST, expr]]
+  # type: (AST) -> Iterator[Union[AST, expr]]
   # Don't attempt to process children of JoinedStr nodes, which we can't fully handle yet.
   if is_joined_str(node):
     return
