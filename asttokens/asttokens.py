@@ -203,7 +203,7 @@ class ASTTokens(object):
     Yields all tokens making up the given node. If include_extra is True, includes non-coding
     tokens such as tokenize.NL and .COMMENT.
     """
-    return self.token_range(cast(Token, node.first_token), cast(Token, node.last_token), include_extra=include_extra)
+    return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
   def get_text_range(self, node):
     # type: (AstNode) -> Tuple[int, int]
