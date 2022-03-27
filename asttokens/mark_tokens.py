@@ -222,7 +222,7 @@ class MarkTokens(object):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # With astroid, nodes that start with a doc-string can have an empty body, in which case we
     # need to adjust the last token to include the doc string.
-    if not getattr(node, 'body', None) and getattr(node, 'doc', None):
+    if not node.body and getattr(node, 'doc', None): # type: ignore[union-attr]
       last_token = self._code.find_token(last_token, token.STRING)
 
     # Include @ from decorator
