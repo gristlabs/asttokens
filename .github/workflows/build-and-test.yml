@@ -18,8 +18,11 @@ jobs:
           - 3.8
           - 3.9
           - '3.10'
-          - pypy2
-          - pypy3
+          # As per https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#pypy list of versions
+          - pypy-2.7
+          - pypy-3.6
+          - pypy-3.7
+          - pypy-3.8
     env:
       ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
