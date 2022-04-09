@@ -6,7 +6,6 @@ import token
 import tokenize
 import unittest
 from .context import asttokens
-from . import tools
 
 class TestASTTokens(unittest.TestCase):
 
