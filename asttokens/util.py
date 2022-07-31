@@ -318,8 +318,7 @@ class NodeMethods(object):
     return method
 
 
-def patched_generate_tokens(original_tokens):
-  # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+def patched_generate_tokens(original_tokens):  # type: ignore  # (Python 2 makes it hard)
   """
   Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
   Workaround for https://github.com/python/cpython/issues/68382.
@@ -338,9 +337,9 @@ def patched_generate_tokens(original_tokens):
       original_tokens,
       lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
   ):
-    group = list(group_iter)  # type: List[tokenize.TokenInfo]
+    group = list(group_iter)
     if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
-      line = group[0].line  # type: str
+      line = group[0].line
       assert {tok.line for tok in group} == {line}
       yield tokenize.TokenInfo(
         type=tokenize.NAME,
