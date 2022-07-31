@@ -318,36 +318,37 @@ class NodeMethods(object):
     return method
 
 
-def patched_generate_tokens(original_tokens):  # type: ignore  # (Python 2 makes it hard)
-  """
-  Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
-  Workaround for https://github.com/python/cpython/issues/68382.
-  Should only be used when tokenizing a string that is known to be valid syntax,
-  because it assumes that error tokens are not actually errors.
-  Combines groups of consecutive NAME and/or ERRORTOKEN tokens into a single NAME token.
-  """
-  if six.PY2:
-    # Python 2 doesn't support non-ASCII identifiers, and making the rest of this code support Python 2
-    # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
-    for tok in original_tokens:
-      yield tok
-    return
-
-  for key, group_iter in itertools.groupby(
-      original_tokens,
-      lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
-  ):
-    group = list(group_iter)
-    if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
-      line = group[0].line
-      assert {tok.line for tok in group} == {line}
-      yield tokenize.TokenInfo(
-        type=tokenize.NAME,
-        string="".join(t.string for t in group),
-        start=group[0].start,
-        end=group[-1].end,
-        line=line,
-      )
-    else:
-      for tok in group:
-        yield tok
+if sys.version_info[0] == 2:
+  # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
+  # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
+  def patched_generate_tokens(original_tokens):
+    # type: (Any) -> Any
+    return original_tokens
+else:
+  def patched_generate_tokens(original_tokens):
+    # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+    """
+    Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
+    Workaround for https://github.com/python/cpython/issues/68382.
+    Should only be used when tokenizing a string that is known to be valid syntax,
+    because it assumes that error tokens are not actually errors.
+    Combines groups of consecutive NAME and/or ERRORTOKEN tokens into a single NAME token.
+    """
+    for key, group_iter in itertools.groupby(
+        original_tokens,
+        lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
+    ):
+      group = list(group_iter)  # type: List[tokenize.TokenInfo]
+      if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
+        line = group[0].line  # type: str
+        assert {tok.line for tok in group} == {line}
+        yield tokenize.TokenInfo(
+          type=tokenize.NAME,
+          string="".join(t.string for t in group),
+          start=group[0].start,
+          end=group[-1].end,
+          line=line,
+        )
+      else:
+        for tok in group:
+          yield tok
