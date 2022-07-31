@@ -334,11 +334,11 @@ def patched_generate_tokens(original_tokens):
       yield tok
     return
 
-  for key, group in itertools.groupby(
+  for key, group_iter in itertools.groupby(
       original_tokens,
       lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
   ):
-    group = list(group)  # type: List[tokenize.TokenInfo]
+    group = list(group_iter)  # type: List[tokenize.TokenInfo]
     if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
       line = group[0].line  # type: str
       assert {tok.line for tok in group} == {line}
