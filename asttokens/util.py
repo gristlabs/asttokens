@@ -14,13 +14,18 @@
 
 import ast
 import collections
-import token
+import itertools
 import sys
-from six import iteritems
+import token
+import tokenize
 from abc import ABCMeta
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 from ast import Module, expr, AST
-from astroid.node_classes import NodeNG # type: ignore[import]
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
+
+import six
+from astroid.node_classes import NodeNG  # type: ignore[import]
+from six import iteritems
+
 
 def token_repr(tok_type, string):
   # type: (int, Optional[str]) -> str
@@ -311,3 +316,39 @@ class NodeMethods(object):
       method = getattr(obj, name, obj.visit_default)
       self._cache[cls] = method
     return method
+
+
+def patched_generate_tokens(original_tokens):
+  # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+  """
+  Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
+  Workaround for https://github.com/python/cpython/issues/68382.
+  Should only be used when tokenizing a string that is known to be valid syntax,
+  because it assumes that error tokens are not actually errors.
+  Combines groups of consecutive NAME and/or ERRORTOKEN tokens into a single NAME token.
+  """
+  if six.PY2:
+    # Python 2 doesn't support non-ASCII identifiers, and making the rest of this code support Python 2
+    # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
+    for tok in original_tokens:
+      yield tok
+    return
+
+  for key, group in itertools.groupby(
+      original_tokens,
+      lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
+  ):
+    group = list(group)  # type: List[tokenize.TokenInfo]
+    if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
+      line = group[0].line  # type: str
+      assert {tok.line for tok in group} == {line}
+      yield tokenize.TokenInfo(
+        type=tokenize.NAME,
+        string="".join(t.string for t in group),
+        start=group[0].start,
+        end=group[-1].end,
+        line=line,
+      )
+    else:
+      for tok in group:
+        yield tok
