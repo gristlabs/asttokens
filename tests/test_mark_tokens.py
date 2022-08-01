@@ -635,8 +635,19 @@ j  # not a complex number, just a name
         except OSError:
           continue
 
-        # Astroid fails with a syntax error if a type comment is on its own line
-        if self.is_astroid_test and re.search(r'^\s*# type: ', source, re.MULTILINE):
+        if self.is_astroid_test and (
+            # Astroid fails with a syntax error if a type comment is on its own line
+            re.search(r'^\s*# type: ', source, re.MULTILINE)
+            # Astroid can fail on this file, specifically raising an exception at this line of code:
+            #     lambda node: node.name == "NamedTuple" and node.parent.name == "typing"
+            # with the error:
+            #     AttributeError: 'If' object has no attribute 'name'
+            # See https://github.com/gristlabs/asttokens/runs/7602147792
+            # I think the code that causes the problem is:
+            #     if sys.version_info >= (3, 11):
+            #         NamedTuple = typing.NamedTuple
+            or filename.endswith("typing_extensions.py")
+        ):
           print('Skipping', filename)
           continue
 
