@@ -284,7 +284,7 @@ bar = ('x y z'   # comment2
       # Test of https://bitbucket.org/plas/thonny/issues/162/weird-range-marker-crash-with-non-ascii
       # Only on PY3 because Py2 doesn't support unicode identifiers.
       for source in (
-        "℘·=1",  # example from https://github.com/python/cpython/issues/68382
+        "℘·2=1",  # example from https://github.com/python/cpython/issues/68382
         "sünnikuupäev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]",
         "sünnikuupaev=str((18+int(isikukood[0:1])-1)//2)+isikukood[1:3]"):
         m = self.create_mark_checker(source)

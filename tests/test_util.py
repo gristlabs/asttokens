@@ -1,15 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
-import ast
-import token
 
-import astroid
+import ast
+import io
+import token
 import unittest
 
+import astroid
 import pytest
+import six
 
 from .context import asttokens
 from .tools import get_node_name
+
 
 class TestUtil(unittest.TestCase):
 
@@ -111,6 +114,35 @@ def test_expect_token():
   tok = atok.tokens[0]
   with pytest.raises(ValueError):
     asttokens.util.expect_token(tok, token.OP)
+
+
+if six.PY3:
+  def test_combine_tokens():
+    from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
+    from asttokens.util import combine_tokens, patched_generate_tokens
+
+    text = "℘·2=1"
+    original_tokens = list(generate_tokens(io.StringIO(text).readline))
+    assert original_tokens[:4] == [
+      TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+      TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
+      TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
+      TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
+    ]
+    assert combine_tokens(original_tokens[:1]) == [
+      TokenInfo(NAME, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+    ]
+    assert combine_tokens(original_tokens[:2]) == [
+      TokenInfo(NAME, string='℘·', start=(1, 0), end=(1, 2), line='℘·2=1'),
+    ]
+    assert combine_tokens(original_tokens[:3]) == [
+      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+    ]
+
+    assert list(patched_generate_tokens(iter(original_tokens)))[:2] == [
+      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+      TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
+    ]
 
 
 if __name__ == "__main__":

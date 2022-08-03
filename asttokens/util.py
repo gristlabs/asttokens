@@ -332,23 +332,33 @@ else:
     Workaround for https://github.com/python/cpython/issues/68382.
     Should only be used when tokenizing a string that is known to be valid syntax,
     because it assumes that error tokens are not actually errors.
-    Combines groups of consecutive NAME and/or ERRORTOKEN tokens into a single NAME token.
+    Combines groups of consecutive NAME, NUMBER, and/or ERRORTOKEN tokens into a single NAME token.
     """
-    for key, group_iter in itertools.groupby(
-        original_tokens,
-        lambda t: tokenize.NAME if t.type == tokenize.ERRORTOKEN else t.type,
-    ):
-      group = list(group_iter)  # type: List[tokenize.TokenInfo]
-      if key == tokenize.NAME and len(group) > 1 and any(tok.type == tokenize.ERRORTOKEN for tok in group):
-        line = group[0].line  # type: str
-        assert {tok.line for tok in group} == {line}
-        yield tokenize.TokenInfo(
-          type=tokenize.NAME,
-          string="".join(t.string for t in group),
-          start=group[0].start,
-          end=group[-1].end,
-          line=line,
-        )
+    group = []  # type: List[tokenize.TokenInfo]
+    for tok in original_tokens:
+      if (
+          tok.type in (tokenize.NAME, tokenize.ERRORTOKEN, tokenize.NUMBER)
+          # Only combine tokens if they have no whitespace in between
+          and (not group or group[-1].end == tok.start)
+      ):
+        group.append(tok)
       else:
-        for tok in group:
-          yield tok
+        for combined_token in combine_tokens(group):
+          yield combined_token
+        group = [tok]
+    for combined_token in combine_tokens(group):
+      yield combined_token
+
+  def combine_tokens(group):
+    # type: (List[tokenize.TokenInfo]) -> List[tokenize.TokenInfo]
+    if not any(tok.type == tokenize.ERRORTOKEN for tok in group) or len({tok.line for tok in group}) != 1:
+      return group
+    return [
+      tokenize.TokenInfo(
+        type=tokenize.NAME,
+        string="".join(t.string for t in group),
+        start=group[0].start,
+        end=group[-1].end,
+        line=group[0].line,
+      )
+    ]
