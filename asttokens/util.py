@@ -345,7 +345,8 @@ else:
       else:
         for combined_token in combine_tokens(group):
           yield combined_token
-        group = [tok]
+        group = []
+        yield tok
     for combined_token in combine_tokens(group):
       yield combined_token
 
