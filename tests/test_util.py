@@ -143,6 +143,9 @@ if six.PY3:
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
       TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
     ]
+    assert list(patched_generate_tokens(iter(original_tokens[:-1]))) == [
+      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+    ]
 
 
 if __name__ == "__main__":
