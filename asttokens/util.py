@@ -14,13 +14,18 @@
 
 import ast
 import collections
-import token
+import itertools
 import sys
-from six import iteritems
+import token
+import tokenize
 from abc import ABCMeta
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 from ast import Module, expr, AST
-from astroid.node_classes import NodeNG # type: ignore[import]
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
+
+import six
+from astroid.node_classes import NodeNG  # type: ignore[import]
+from six import iteritems
+
 
 def token_repr(tok_type, string):
   # type: (int, Optional[str]) -> str
@@ -311,3 +316,50 @@ class NodeMethods(object):
       method = getattr(obj, name, obj.visit_default)
       self._cache[cls] = method
     return method
+
+
+if sys.version_info[0] == 2:
+  # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
+  # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
+  def patched_generate_tokens(original_tokens):
+    # type: (Any) -> Any
+    return original_tokens
+else:
+  def patched_generate_tokens(original_tokens):
+    # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+    """
+    Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
+    Workaround for https://github.com/python/cpython/issues/68382.
+    Should only be used when tokenizing a string that is known to be valid syntax,
+    because it assumes that error tokens are not actually errors.
+    Combines groups of consecutive NAME, NUMBER, and/or ERRORTOKEN tokens into a single NAME token.
+    """
+    group = []  # type: List[tokenize.TokenInfo]
+    for tok in original_tokens:
+      if (
+          tok.type in (tokenize.NAME, tokenize.ERRORTOKEN, tokenize.NUMBER)
+          # Only combine tokens if they have no whitespace in between
+          and (not group or group[-1].end == tok.start)
+      ):
+        group.append(tok)
+      else:
+        for combined_token in combine_tokens(group):
+          yield combined_token
+        group = []
+        yield tok
+    for combined_token in combine_tokens(group):
+      yield combined_token
+
+  def combine_tokens(group):
+    # type: (List[tokenize.TokenInfo]) -> List[tokenize.TokenInfo]
+    if not any(tok.type == tokenize.ERRORTOKEN for tok in group) or len({tok.line for tok in group}) != 1:
+      return group
+    return [
+      tokenize.TokenInfo(
+        type=tokenize.NAME,
+        string="".join(t.string for t in group),
+        start=group[0].start,
+        end=group[-1].end,
+        line=group[0].line,
+      )
+    ]

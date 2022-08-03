@@ -17,7 +17,7 @@ import bisect
 import io
 import token
 import tokenize
-from .util import Token, match_token, is_non_coding_token, AstNode
+from .util import Token, match_token, is_non_coding_token, AstNode, patched_generate_tokens
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
@@ -87,10 +87,11 @@ class ASTTokens(object):
     """
     Generates tokens for the given code.
     """
-    # This is technically an undocumented API for Python3, but allows us to use the same API as for
+    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
     # Python2. See http://stackoverflow.com/a/4952291/328565.
     # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    for index, tok in enumerate(tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))):
+    original_tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
+    for index, tok in enumerate(patched_generate_tokens(original_tokens)):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,
                   self._line_numbers.line_to_offset(start[0], start[1]),
