@@ -122,8 +122,8 @@ if six.PY3:
     from asttokens.util import combine_tokens, patched_generate_tokens
 
     text = "℘·2=1"
-    original_tokens = list(generate_tokens(io.StringIO(text).readline))
-    assert original_tokens[:4] == [
+    original_tokens = list(generate_tokens(io.StringIO(text).readline))[:4]
+    assert original_tokens == [
       TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
       TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
       TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
@@ -139,7 +139,7 @@ if six.PY3:
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
     ]
 
-    assert list(patched_generate_tokens(iter(original_tokens)))[:2] == [
+    assert list(patched_generate_tokens(iter(original_tokens))) == [
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
       TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
     ]
