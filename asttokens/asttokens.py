@@ -17,12 +17,16 @@ import bisect
 import io
 import token
 import tokenize
-from .util import Token, match_token, is_non_coding_token, AstNode, patched_generate_tokens
+from .util import Token, match_token, is_non_coding_token, patched_generate_tokens
 import six
 from six.moves import xrange      # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
-from typing import Callable, Iterator, List, Optional, Tuple, Any, cast
+from typing import Callable, Iterator, List, Optional, Tuple, Any, cast,TYPE_CHECKING
 from ast import Module
+
+if TYPE_CHECKING:
+  from .util import AstNode
+
 
 class ASTTokens(object):
   """
