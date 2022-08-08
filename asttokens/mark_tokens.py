@@ -16,15 +16,24 @@ import ast
 import numbers
 import sys
 import token
+from ast import Module
+from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 
 import six
 
 from . import util
-from .util import AstConstant, AstNode
 from .asttokens import ASTTokens
-from ast import Module
-from typing import Callable, List, Union, cast, Optional, Tuple
-import astroid.node_classes as nc # type: ignore[import]
+from .util import AstConstant
+
+try:
+  import astroid.node_classes as nc # type: ignore[import]
+except Exception:
+  # This is only used for type checking, we don't need it if astroid isn't installed.
+  nc = None
+
+if TYPE_CHECKING:
+  from .util import AstNode
+
 
 # Mapping of matching braces. To find a token here, look up token[:2].
 _matching_pairs_left = {
@@ -303,7 +312,9 @@ class MarkTokens(object):
       assert isinstance(node, ast.Tuple) or isinstance(node, nc._BaseContainer)
       # It's a bare tuple if the first token belongs to the first child. The first child may
       # include extraneous parentheses (which don't create new nodes), so account for those too.
-      child = cast(AstNode, node.elts[0])
+      child = node.elts[0]
+      if TYPE_CHECKING:
+        child = cast(AstNode, child)
       child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
       if first_token == child_first:
         return self.handle_bare_tuple(node, first_token, last_token)

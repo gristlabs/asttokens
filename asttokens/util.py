@@ -14,17 +14,27 @@
 
 import ast
 import collections
-import itertools
 import sys
 import token
 import tokenize
 from abc import ABCMeta
 from ast import Module, expr, AST
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
+from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
-import six
-from astroid.node_classes import NodeNG  # type: ignore[import]
 from six import iteritems
+
+if TYPE_CHECKING:
+  from astroid.node_classes import NodeNG  # type: ignore[import]
+
+  # Type class used to expand out the definition of AST to include fields added by this library
+  # It's not actually used for anything other than type checking though!
+  class EnhancedAST(AST):
+    # Additional attributes set by mark_tokens
+    first_token = None  # type: Token
+    last_token = None  # type: Token
+    lineno = 0  # type: int
+
+  AstNode = Union[EnhancedAST, NodeNG]
 
 
 def token_repr(tok_type, string):
@@ -53,23 +63,11 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
     return token_repr(self.type, self.string)
 
 
-# Type class used to expand out the definition of AST to include fields added by this library
-# It's not actually used for anything other than type checking though!
-class EnhancedAST(AST):
-  # Additional attributes set by mark_tokens
-  first_token = None # type: Token 
-  last_token = None # type: Token
-  lineno = 0 # type: int
-
-
 if sys.version_info >= (3, 6):
   AstConstant = ast.Constant
 else:
   class AstConstant:
     value = object()
-
-
-AstNode = Union[EnhancedAST, NodeNG]
 
 
 def match_token(token, tok_type, tok_str=None):
