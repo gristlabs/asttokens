@@ -25,7 +25,7 @@ jobs:
           - pypy-3.7
           - pypy-3.8
     env:
-#      ASTTOKENS_SLOW_TESTS: 1
+      ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
 
     steps:
