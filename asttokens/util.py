@@ -23,8 +23,12 @@ from ast import Module, expr, AST
 from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any
 
 import six
-from astroid.node_classes import NodeNG  # type: ignore[import]
 from six import iteritems
+
+try:
+  from astroid.node_classes import NodeNG  # type: ignore[import]
+except ModuleNotFoundError:
+  NodeNG = None
 
 
 def token_repr(tok_type, string):
@@ -68,8 +72,7 @@ else:
   class AstConstant:
     value = object()
 
-
-AstNode = Union[EnhancedAST, NodeNG]
+AstNode = EnhancedAST if NodeNG is None else Union[EnhancedAST, NodeNG]
 
 
 def match_token(token, tok_type, tok_str=None):
