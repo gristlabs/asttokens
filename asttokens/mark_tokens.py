@@ -24,7 +24,12 @@ from .util import AstConstant, AstNode
 from .asttokens import ASTTokens
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple
-import astroid.node_classes as nc # type: ignore[import]
+
+try:
+  import astroid.node_classes as nc # type: ignore[import]
+except ModuleNotFoundError:
+  nc = None
+  
 
 # Mapping of matching braces. To find a token here, look up token[:2].
 _matching_pairs_left = {
@@ -300,7 +305,7 @@ class MarkTokens(object):
     # In Python3.8 parsed tuples include parentheses when present.
     def handle_tuple_nonempty(self, node, first_token, last_token):
       # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      assert isinstance(node, ast.Tuple) or isinstance(node, nc._BaseContainer)
+      assert isinstance(node, ast.Tuple) or (nc is not None and isinstance(node, nc._BaseContainer))
       # It's a bare tuple if the first token belongs to the first child. The first child may
       # include extraneous parentheses (which don't create new nodes), so account for those too.
       child = cast(AstNode, node.elts[0])
@@ -317,7 +322,7 @@ class MarkTokens(object):
 
   def visit_tuple(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    assert isinstance(node, ast.Tuple) or isinstance(node, nc._BaseContainer)
+    assert isinstance(node, ast.Tuple) or (nc is not None and isinstance(node, nc._BaseContainer))
     if not node.elts:
       # An empty tuple is just "()", and we need no further info.
       return (first_token, last_token)
@@ -391,7 +396,7 @@ class MarkTokens(object):
   # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    assert isinstance(node, AstConstant) or isinstance(node, nc.Const)
+    assert isinstance(node, AstConstant) or (nc is not None and isinstance(node, nc.Const))
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, (six.text_type, six.binary_type)):
@@ -407,7 +412,7 @@ class MarkTokens(object):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     # Until python 3.9 (https://bugs.python.org/issue40141),
     # ast.keyword nodes didn't have line info. Astroid has lineno None.
-    assert isinstance(node, ast.keyword) or isinstance(node, nc.Keyword)
+    assert isinstance(node, ast.keyword) or (nc is not None and isinstance(node, nc.Keyword))
     if node.arg is not None and getattr(node, 'lineno', None) is None:
       equals = self._code.find_token(first_token, token.OP, '=', reverse=True)
       name = self._code.prev_token(equals)
