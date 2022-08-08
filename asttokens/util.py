@@ -72,6 +72,7 @@ else:
   class AstConstant:
     value = object()
 
+
 AstNode = EnhancedAST if NodeNG is None else Union[EnhancedAST, NodeNG]
 
 
