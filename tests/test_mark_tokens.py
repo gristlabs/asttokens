@@ -787,7 +787,7 @@ partial_sums = [total := total + v for v in values]
           'def foo():\n    """xx"""\n    None')
 
   nodes_classes = ast.AST
-  context_classes = [ast.expr_context]
+  context_classes = [ast.expr_context] # type: list[util.AstNode]
   iter_fields = staticmethod(ast.iter_fields)
 
   def assert_nodes_equal(self, t1, t2):
