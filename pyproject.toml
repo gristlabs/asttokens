@@ -12,7 +12,6 @@ warn_unused_ignores=true
 disallow_untyped_defs=true
 disallow_untyped_calls=true
 no_implicit_reexport=true
-exclude = ["testdata"]
 
 [[tool.mypy.overrides]]
 module = "tests.*"
