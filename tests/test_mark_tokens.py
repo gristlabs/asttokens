@@ -9,6 +9,7 @@ import re
 import sys
 import textwrap
 import token
+from typing import List
 import unittest
 from time import time
 
@@ -787,7 +788,7 @@ partial_sums = [total := total + v for v in values]
           'def foo():\n    """xx"""\n    None')
 
   nodes_classes = ast.AST
-  context_classes = [ast.expr_context] # type: list[util.AstNode]
+  context_classes = [ast.expr_context] # type: List[util.AstNode]
   iter_fields = staticmethod(ast.iter_fields)
 
   def assert_nodes_equal(self, t1, t2):
