@@ -105,14 +105,14 @@ class MarkTokens(object):
       last = self._find_last_in_stmt(cast(util.Token, last))
 
     # Capture any unmatched brackets.
-    first, last = self._expand_to_matching_pairs(cast(util.Token, first), cast(util.Token, last), node)
+    first, last = self._expand_to_matching_pairs_fast(cast(util.Token, first), cast(util.Token, last))
 
     # Give a chance to node-specific methods to adjust.
     nfirst, nlast = self._methods.get(self, node.__class__)(node, first, last)
 
     if (nfirst, nlast) != (first, last):
       # If anything changed, expand again to capture any unmatched brackets.
-      nfirst, nlast = self._expand_to_matching_pairs(nfirst, nlast, node)
+      nfirst, nlast = self._expand_to_matching_pairs_fast(nfirst, nlast)
 
     node.first_token = nfirst
     node.last_token = nlast
@@ -125,6 +125,10 @@ class MarkTokens(object):
            not token.ISEOF(t.type)):
       t = self._code.next_token(t, include_extra=True)
     return self._code.prev_token(t)
+
+  def _expand_to_matching_pairs_fast(self, first_token, last_token):
+    ll,hh = self._code._tp.query_interval(first_token.index, last_token.index)
+    return self._code._tokens[ll], self._code._tokens[hh]
 
   def _expand_to_matching_pairs(self, first_token, last_token, node):
     # type: (util.Token, util.Token, AstNode) -> Tuple[util.Token, util.Token]

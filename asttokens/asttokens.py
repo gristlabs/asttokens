@@ -28,6 +28,9 @@ if TYPE_CHECKING:
   from .util import AstNode
 
 
+from .intervaltree import make_tree
+
+
 class ASTTokens(object):
   """
   ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
@@ -65,6 +68,7 @@ class ASTTokens(object):
 
     # Tokenize the code.
     self._tokens = list(self._generate_tokens(source_text))
+    self._tp = make_tree(self._tokens)
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
     self._token_offsets = [tok.startpos for tok in self._tokens]
