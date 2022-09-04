@@ -120,8 +120,12 @@ class MarkChecker(object):
     as get_text_unmarked.
     """
 
-    if test_case.is_astroid_test or sys.version_info < (3, 8):
-      # astroid doesn't support get_text_unmarked, and before 3.8, ast doesn't either.
+    if (
+        test_case.is_astroid_test
+        or sys.version_info < (3, 8)
+        or 'pypy' in sys.version.lower()
+    ):
+      # These cases are not supported by get_text_unmarked
       return
 
     text_unmarked = self.atok.get_text_unmarked(node)
