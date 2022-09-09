@@ -143,20 +143,22 @@ class MarkChecker(object):
         with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
           test_case.parse_snippet(text, node)
 
-  # Node types that check_get_text_unmarked should ignore.
-  bad_unmarked_types = (
-    # get_text_unmarked does something sensible for modules, but it differs from get_text.
-    ast.Module,
-    # no lineno
-    ast.arguments, ast.withitem,
-  )  # type: Tuple[Type[ast.AST], ...]
-  if sys.version_info[:2] == (3, 8):
-    bad_unmarked_types += (
-      # get_text_unmarked works incorrectly for these types due to bugs in Python 3.8.
-      ast.arg, ast.Starred,
-      # no lineno in 3.8
-      ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
+  # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
+  bad_unmarked_types = ()  # type: Tuple[Type[ast.AST], ...]
+  if sys.version_info[:2] >= (3, 8):
+    bad_unmarked_types = (
+      # get_text_unmarked does something sensible for modules, but it differs from get_text.
+      ast.Module,
+      # no lineno
+      ast.arguments, ast.withitem,
     )
+    if sys.version_info[:2] == (3, 8):
+      bad_unmarked_types += (
+        # get_text_unmarked works incorrectly for these types due to bugs in Python 3.8.
+        ast.arg, ast.Starred,
+        # no lineno in 3.8
+        ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
+      )
 
   def _check_alias_unmarked(self, node, test_case, text_unmarked):
     if sys.version_info < (3, 10):
