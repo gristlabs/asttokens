@@ -361,3 +361,18 @@ else:
         line=group[0].line,
       )
     ]
+
+
+def last_stmt(node):
+  # type: (ast.AST) -> ast.AST
+  """
+  If the given AST node contains multiple statements, return the last one.
+  Otherwise, just return the node.
+  """
+  child_stmts = [
+    child for child in ast.iter_child_nodes(node)
+    if isinstance(child, (ast.stmt, ast.excepthandler))
+  ]
+  if child_stmts:
+    return last_stmt(child_stmts[-1])
+  return node

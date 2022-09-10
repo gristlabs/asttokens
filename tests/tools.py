@@ -1,9 +1,11 @@
 from __future__ import unicode_literals, print_function
 
+import ast
 import io
 import os
 import re
 import sys
+from typing import Tuple, Type
 
 from asttokens import util
 
@@ -71,6 +73,9 @@ class MarkChecker(object):
     test_case.longMessage = True
     tested_nodes = 0
     for node in self.all_nodes:
+      text = self.atok.get_text(node)
+      self.check_get_text_unmarked(node, test_case, text)
+
       if not (
           util.is_stmt(node) or
           util.is_expr(node) or
@@ -80,8 +85,6 @@ class MarkChecker(object):
       # slices currently only get the correct tokens for ast, not astroid.
       if util.is_slice(node) and test_case.is_astroid_test:
         continue
-
-      text = self.atok.get_text(node)
 
       # await is not allowed outside async functions below 3.7
       # parsing again would give a syntax error
@@ -110,6 +113,63 @@ class MarkChecker(object):
       tested_nodes += 1
 
     return tested_nodes
+
+  def check_get_text_unmarked(self, node, test_case, text):
+    """
+    Check that `text` (returned from get_text()) usually returns the same text
+    as get_text_unmarked.
+    """
+
+    if (
+        test_case.is_astroid_test
+        or sys.version_info < (3, 8)
+        or 'pypy' in sys.version.lower()
+    ):
+      # These cases are not supported by get_text_unmarked
+      return
+
+    text_unmarked = self.atok.get_text_unmarked(node)
+    if isinstance(node, ast.alias):
+      self._check_alias_unmarked(node, test_case, text_unmarked)
+    elif not isinstance(node, self.bad_unmarked_types):
+      has_lineno = hasattr(node, 'lineno')
+      test_case.assertEqual(has_lineno, text_unmarked != '')
+      if has_lineno:
+        test_case.assertEqual(text, text_unmarked, ast.dump(node))
+      else:
+        # get_text_unmarked can't work with nodes without lineno.
+        # Double-check that such nodes are unusual.
+        test_case.assertFalse(util.is_stmt(node) or util.is_expr(node))
+        with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
+          test_case.parse_snippet(text, node)
+
+  # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
+  bad_unmarked_types = ()  # type: Tuple[Type[ast.AST], ...]
+  if sys.version_info[:2] >= (3, 8):
+    bad_unmarked_types = (
+      # get_text_unmarked does something sensible for modules, but it differs from get_text.
+      ast.Module,
+      # no lineno
+      ast.arguments, ast.withitem,
+    )
+    if sys.version_info[:2] == (3, 8):
+      bad_unmarked_types += (
+        # get_text_unmarked works incorrectly for these types due to bugs in Python 3.8.
+        ast.arg, ast.Starred,
+        # no lineno in 3.8
+        ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
+      )
+
+  def _check_alias_unmarked(self, node, test_case, text_unmarked):
+    if sys.version_info < (3, 10):
+      # Before 3.10, aliases don't have position information
+      test_case.assertEqual(text_unmarked, '')
+    # For 3.10+, the original get_text often returns the wrong value for aliases.
+    # So to verify get_text_unmarked, we instead check the general form.
+    elif node.asname:
+      test_case.assertEqual(text_unmarked.split(), [node.name, 'as', node.asname])
+    else:
+      test_case.assertEqual(text_unmarked, node.name)
 
 
 def repr_tree(node):

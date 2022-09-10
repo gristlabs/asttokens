@@ -63,6 +63,13 @@ class LineNumbers(object):
     else:
       return min(self._line_offsets[line] + max(0, column), self._text_len)
 
+  def utf8_to_offset(self, line, utf8_column):
+    # type: (int, int) -> int
+    """
+    Converts 1-based line number and 0-based utf8 column to 0-based character offset into text.
+    """
+    return self.line_to_offset(line, self.from_utf8_col(line, utf8_column))
+
   def offset_to_line(self, offset):
     # type: (int) -> Tuple[int, int]
     """

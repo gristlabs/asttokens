@@ -15,14 +15,17 @@
 import ast
 import bisect
 import io
+import sys
 import token
 import tokenize
-from .util import Token, match_token, is_non_coding_token, patched_generate_tokens
-import six
-from six.moves import xrange      # pylint: disable=redefined-builtin
-from .line_numbers import LineNumbers
-from typing import Callable, Iterator, List, Optional, Tuple, Any, cast,TYPE_CHECKING
 from ast import Module
+from typing import Callable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
+
+import six
+from six.moves import xrange  # pylint: disable=redefined-builtin
+
+from .line_numbers import LineNumbers
+from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt
 
 if TYPE_CHECKING:
   from .util import AstNode
@@ -235,3 +238,61 @@ class ASTTokens(object):
     """
     start, end = self.get_text_range(node)
     return self._text[start : end]
+
+  def get_text_range_unmarked(self, node):
+    # type: (ast.AST) -> Tuple[int, int]
+    """
+    Like get_text_range(), but works without requiring mark_tokens() to have been called.
+    Requires Python 3.8+. Doesn't support astroid.
+    """
+    if sys.version_info < (3, 8):
+      raise NotImplementedError('Requires Python 3.8+')
+
+    if not isinstance(node, ast.AST):
+      raise NotImplementedError('Not supported for astroid')
+
+    if isinstance(node, ast.Module):
+      # Modules don't have position info, so just return the range of the whole text.
+      # get_text does something different, but its behavior seems weird and inconsistent.
+      # For example, in a file with only comments, it only returns the first line.
+      # It's hard to imagine a case when this matters.
+      return 0, len(self._text)
+    elif not hasattr(node, 'lineno'):
+      return 0, 0
+    else:
+      decorators = getattr(node, 'decorator_list', [])
+      if decorators:
+        # Function/Class definition nodes are marked by AST as starting at def/class,
+        # not the first decorator. This doesn't match the original get_text[_range] behavior,
+        # or inspect.getsource(), and just seems weird.
+        start_node = decorators[0]
+      else:
+        start_node = node
+      start = self._line_numbers.utf8_to_offset(
+        start_node.lineno,
+        start_node.col_offset,
+      )
+      # Like get_text_range(), keep the indentation of the first line
+      # of a multi-line, multi-statement node.
+      if last_stmt(node).lineno != node.lineno:
+        start = self._text.rfind('\n', 0, start) + 1
+
+    # To match the behavior of get_text_range, we exclude trailing semicolons and comments.
+    # This means that for blocks containing multiple statements, we have to use the last one
+    # instead of the actual node for end_lineno and end_col_offset.
+    end_node = last_stmt(node)
+    end = self._line_numbers.utf8_to_offset(
+      cast(int, end_node.end_lineno),
+      cast(int, end_node.end_col_offset),
+    )
+
+    return start, end
+
+  def get_text_unmarked(self, node):
+    # type: (ast.AST) -> str
+    """
+    Like get_text(), but works without requiring mark_tokens() to have been called.
+    Requires Python 3.8+. Doesn't support astroid.
+    """
+    start, end = self.get_text_range_unmarked(node)
+    return self._text[start:end]

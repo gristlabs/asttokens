@@ -442,6 +442,16 @@ bar = ('x y z'   # comment2
     self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
 
   if not six.PY2:
+    def test_bad_unmarked_types(self):
+      # Cases where get_text_unmarked is incorrect in 3.8.
+      source = textwrap.dedent("""
+        def foo(*, name: str):  # keyword-only argument with type annotation
+          pass
+        
+        f(*(x))  # ast.Starred with parentheses
+      """)
+      self.create_mark_checker(source)
+
     def test_return_annotation(self):
       # See https://bitbucket.org/plas/thonny/issues/9/range-marker-crashes-on-function-return
       source = textwrap.dedent("""
@@ -554,11 +564,14 @@ a; b; c(
   17
 ); d # comment1; comment2
 if 2: a; b; # comment3
+if a:
+  if b: c; d  # comment4
     """
     m = self.create_mark_checker(source)
     self.assertEqual(
       [m.atok.get_text(n) for n in m.all_nodes if util.is_stmt(n)],
-      ['a', 'b', 'c(\n  17\n)', 'd', 'if 2: a; b', 'a', 'b'])
+      ['a', 'b', 'c(\n  17\n)', 'd', 'if 2: a; b', 'a', 'b',
+       'if a:\n  if b: c; d', 'if b: c; d', 'c', 'd'])
 
 
   def test_complex_numbers(self):
