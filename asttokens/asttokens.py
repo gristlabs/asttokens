@@ -231,42 +231,31 @@ class ASTTokens(object):
     """
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
-  def get_text_range(self, node):
-    # type: (AstNode) -> Tuple[int, int]
+  def get_text_positions(self, node, unmarked=False):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
-    corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
-    to any particular text.
+    TODO
     """
-    if not self._tokens and supports_unmarked(node):
-      return self.get_text_range_unmarked(node)
+    if unmarked or (not self._tokens and supports_unmarked(node)):
+      return self._get_text_positions_unmarked(node)
 
     self.init_tokens()
 
     if not hasattr(node, 'first_token'):
-      return (0, 0)
+      return (1, 0), (1, 0)
 
-    start = node.first_token.startpos
+    start = node.first_token.start
+    end = node.last_token.end
     if any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
       # Multi-line nodes would be invalid unless we keep the indentation of the first node.
-      start = self._text.rfind('\n', 0, start) + 1
+      start = (start[0], 0)
 
-    return (start, node.last_token.endpos)
+    return start, end
 
-  def get_text(self, node):
-    # type: (AstNode) -> str
+  def _get_text_positions_unmarked(self, node):
+    # type: (AstNode) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    After mark_tokens() has been called, returns the text corresponding to the given node. Returns
-    '' for nodes (like `Load`) that don't correspond to any particular text.
-    """
-    start, end = self.get_text_range(node)
-    return self._text[start : end]
-
-  def get_text_range_unmarked(self, node):
-    # type: (ast.AST) -> Tuple[int, int]
-    """
-    Like get_text_range(), but works without requiring mark_tokens() to have been called.
-    Requires Python 3.8+. Doesn't support astroid.
+    TODO
     """
     if not supports_unmarked():
       raise NotImplementedError('Python version not supported')
@@ -279,46 +268,61 @@ class ASTTokens(object):
       # get_text does something different, but its behavior seems weird and inconsistent.
       # For example, in a file with only comments, it only returns the first line.
       # It's hard to imagine a case when this matters.
-      return 0, len(self._text)
-    elif not hasattr(node, 'lineno'):
-      return 0, 0
+      return (1, 0), self._line_numbers.offset_to_line(len(self._text))
+
+    if not hasattr(node, 'lineno'):
+      return (1, 0), (1, 0)
+
+    decorators = getattr(node, 'decorator_list', [])
+    if decorators:
+      # Function/Class definition nodes are marked by AST as starting at def/class,
+      # not the first decorator. This doesn't match the original get_text[_range] behavior,
+      # or inspect.getsource(), and just seems weird.
+      start_node = decorators[0]
     else:
-      decorators = getattr(node, 'decorator_list', [])
-      if decorators:
-        # Function/Class definition nodes are marked by AST as starting at def/class,
-        # not the first decorator. This doesn't match the original get_text[_range] behavior,
-        # or inspect.getsource(), and just seems weird.
-        start_node = decorators[0]
-      else:
-        start_node = node
-      start = self._line_numbers.utf8_to_offset(
-        start_node.lineno,
-        start_node.col_offset,
-      )
-      # Like get_text_range(), keep the indentation of the first line
-      # of a multi-line, multi-statement node.
-      if last_stmt(node).lineno != node.lineno:
-        start = self._text.rfind('\n', 0, start) + 1
+      start_node = node
+
+    # Like get_text_range(), keep the indentation of the first line
+    # of a multi-line, multi-statement node.
+    if last_stmt(node).lineno != node.lineno:
+      start_col_offset = 0
+    else:
+      start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
+
+    start = (start_node.lineno, start_col_offset)
 
     # To match the behavior of get_text_range, we exclude trailing semicolons and comments.
     # This means that for blocks containing multiple statements, we have to use the last one
     # instead of the actual node for end_lineno and end_col_offset.
     end_node = last_stmt(node)
-    end = self._line_numbers.utf8_to_offset(
-      cast(int, end_node.end_lineno),
-      cast(int, end_node.end_col_offset),
-    )
+    end_lineno = cast(int, end_node.end_lineno)
+    end_col_offset = cast(int, end_node.end_col_offset)
+    end_col_offset = self._line_numbers.from_utf8_col(end_lineno, end_col_offset)
+    end = (end_lineno, end_col_offset)
 
     return start, end
 
-  def get_text_unmarked(self, node):
-    # type: (ast.AST) -> str
+  def get_text_range(self, node, unmarked=False):
+    # type: (AstNode, bool) -> Tuple[int, int]
     """
-    Like get_text(), but works without requiring mark_tokens() to have been called.
-    Requires Python 3.8+. Doesn't support astroid.
+    After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
+    corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
+    to any particular text.
     """
-    start, end = self.get_text_range_unmarked(node)
-    return self._text[start:end]
+    start, end = self.get_text_positions(node, unmarked)
+    return (
+      self._line_numbers.line_to_offset(*start),
+      self._line_numbers.line_to_offset(*end),
+    )
+
+  def get_text(self, node, unmarked=False):
+    # type: (AstNode, bool) -> str
+    """
+    After mark_tokens() has been called, returns the text corresponding to the given node. Returns
+    '' for nodes (like `Load`) that don't correspond to any particular text.
+    """
+    start, end = self.get_text_range(node, unmarked)
+    return self._text[start : end]
 
 
 # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.

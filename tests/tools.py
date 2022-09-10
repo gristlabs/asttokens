@@ -5,7 +5,6 @@ import io
 import os
 import re
 import sys
-from typing import Tuple, Type
 
 from asttokens import util, supports_unmarked
 
@@ -123,7 +122,7 @@ class MarkChecker(object):
     if test_case.is_astroid_test or not supports_unmarked():
       return
 
-    text_unmarked = self.atok.get_text_unmarked(node)
+    text_unmarked = self.atok.get_text(node, unmarked=True)
     if isinstance(node, ast.alias):
       self._check_alias_unmarked(node, test_case, text_unmarked)
     elif isinstance(node, ast.Module):
