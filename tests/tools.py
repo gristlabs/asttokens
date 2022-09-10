@@ -7,7 +7,7 @@ import re
 import sys
 from typing import Tuple, Type
 
-from asttokens import util
+from asttokens import util, supports_unmarked
 
 
 def get_fixture_path(*path_parts):
@@ -120,18 +120,15 @@ class MarkChecker(object):
     as get_text_unmarked.
     """
 
-    if (
-        test_case.is_astroid_test
-        or sys.version_info < (3, 8)
-        or 'pypy' in sys.version.lower()
-    ):
-      # These cases are not supported by get_text_unmarked
+    if test_case.is_astroid_test or not supports_unmarked():
       return
 
     text_unmarked = self.atok.get_text_unmarked(node)
     if isinstance(node, ast.alias):
       self._check_alias_unmarked(node, test_case, text_unmarked)
-    elif not isinstance(node, self.bad_unmarked_types):
+    elif isinstance(node, ast.Module):
+      test_case.assertEqual(text_unmarked, self.atok._text)
+    elif supports_unmarked(node):
       has_lineno = hasattr(node, 'lineno')
       test_case.assertEqual(has_lineno, text_unmarked != '')
       if has_lineno:

@@ -19,7 +19,7 @@ import sys
 import token
 import tokenize
 from ast import Module
-from typing import Callable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
+from typing import Callable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -50,8 +50,9 @@ class ASTTokens(object):
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
   """
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
-    # type: (Any, bool, Optional[Module], str) -> None
+
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', init_tokens=True):
+    # type: (Any, bool, Optional[Module], str, bool) -> None
     # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -66,15 +67,28 @@ class ASTTokens(object):
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
 
+    self._tokens = None  # type: Optional[List[Token]]
+    self._token_offsets = None  # type: Optional[List[int]]
+
+    if not init_tokens and not isinstance(self._tree, (ast.AST, type(None))):
+      raise ValueError('init_tokens=False is only supported for AST trees')
+
+    if init_tokens or not supports_unmarked(self._tree):
+      self.init_tokens()
+
+  def init_tokens(self):
+    # type: () -> None
+    if self._tokens is not None:
+      return
+
     # Tokenize the code.
-    self._tokens = list(self._generate_tokens(source_text))
+    self._tokens = list(self._generate_tokens(self._text))
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
     self._token_offsets = [tok.startpos for tok in self._tokens]
 
     if self._tree:
       self.mark_tokens(self._tree)
-
 
   def mark_tokens(self, root_node):
     # type: (Module) -> None
@@ -87,7 +101,6 @@ class ASTTokens(object):
     # The hard work of this class is done by MarkTokens
     from .mark_tokens import MarkTokens # to avoid import loops
     MarkTokens(self).visit_tree(root_node)
-
 
   def _generate_tokens(self, text):
     # type: (str) -> Iterator[Token]
@@ -114,6 +127,7 @@ class ASTTokens(object):
   def tokens(self):
     # type: () -> List[Token]
     """The list of tokens corresponding to the source code from the constructor."""
+    assert self._tokens
     return self._tokens
 
   @property
@@ -134,6 +148,7 @@ class ASTTokens(object):
     Returns the token containing the given character offset (0-based position in source text),
     or the preceeding token if the position is between tokens.
     """
+    assert self._token_offsets and self._tokens
     return self._tokens[bisect.bisect(self._token_offsets, offset) - 1]
 
   def get_token(self, lineno, col_offset):
@@ -161,6 +176,7 @@ class ASTTokens(object):
     tokens from the tokenize module, such as NL and COMMENT.
     """
     i = tok.index + 1
+    assert self._tokens
     if not include_extra:
       while is_non_coding_token(self._tokens[i].type):
         i += 1
@@ -173,6 +189,7 @@ class ASTTokens(object):
     tokens from the tokenize module, such as NL and COMMENT.
     """
     i = tok.index - 1
+    assert self._tokens
     if not include_extra:
       while is_non_coding_token(self._tokens[i].type):
         i -= 1
@@ -201,6 +218,7 @@ class ASTTokens(object):
     Yields all tokens in order from first_token through and including last_token. If
     include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
     """
+    assert self._tokens
     for i in xrange(first_token.index, last_token.index + 1):
       if include_extra or not is_non_coding_token(self._tokens[i].type):
         yield self._tokens[i]
@@ -220,6 +238,11 @@ class ASTTokens(object):
     corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
     to any particular text.
     """
+    if not self._tokens and supports_unmarked(node):
+      return self.get_text_range_unmarked(node)
+
+    self.init_tokens()
+
     if not hasattr(node, 'first_token'):
       return (0, 0)
 
@@ -245,8 +268,8 @@ class ASTTokens(object):
     Like get_text_range(), but works without requiring mark_tokens() to have been called.
     Requires Python 3.8+. Doesn't support astroid.
     """
-    if sys.version_info < (3, 8):
-      raise NotImplementedError('Requires Python 3.8+')
+    if not supports_unmarked():
+      raise NotImplementedError('Python version not supported')
 
     if not isinstance(node, ast.AST):
       raise NotImplementedError('Not supported for astroid')
@@ -296,3 +319,29 @@ class ASTTokens(object):
     """
     start, end = self.get_text_range_unmarked(node)
     return self._text[start:end]
+
+
+# Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
+_unsupported_unmarked_types = ()  # type: Tuple[Type[ast.AST], ...]
+if sys.version_info[:2] >= (3, 8):
+  _unsupported_unmarked_types += (
+    # no lineno
+    ast.arguments, ast.withitem,
+  )
+  if sys.version_info[:2] == (3, 8):
+    _unsupported_unmarked_types += (
+      # get_text_unmarked works incorrectly for these types due to bugs in Python 3.8.
+      ast.arg, ast.Starred,
+      # no lineno in 3.8
+      ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
+    )
+
+
+def supports_unmarked(node=None):
+  # type: (Any) -> bool
+  return (
+      isinstance(node, (ast.AST, type(None)))
+      and not isinstance(node, _unsupported_unmarked_types)
+      and sys.version_info[:2] >= (3, 8)
+      and 'pypy' not in sys.version.lower()
+  )
