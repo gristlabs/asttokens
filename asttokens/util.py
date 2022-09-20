@@ -36,6 +36,11 @@ if TYPE_CHECKING:
 
   AstNode = Union[EnhancedAST, NodeNG]
 
+  if sys.version_info[0] == 2:
+    TokenInfo = Tuple[int, str, Tuple[int, int], Tuple[int, int], str]
+  else:
+    TokenInfo = tokenize.TokenInfo
+
 
 def token_repr(tok_type, string):
   # type: (int, Optional[str]) -> str
@@ -320,7 +325,7 @@ if sys.version_info[0] == 2:
   # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
   # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
   def patched_generate_tokens(original_tokens):
-    # type: (Any) -> Any
+    # type: (Iterator[TokenInfo]) -> Iterator[TokenInfo]
     return original_tokens
 else:
   def patched_generate_tokens(original_tokens):
