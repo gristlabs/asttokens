@@ -19,7 +19,7 @@ import sys
 import token
 import tokenize
 from ast import Module
-from typing import Callable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
+from typing import Callable, Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -28,7 +28,7 @@ from .line_numbers import LineNumbers
 from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt
 
 if TYPE_CHECKING:
-  from .util import AstNode
+  from .util import AstNode, TokenInfo
 
 
 class ASTTokens(object):
@@ -50,8 +50,8 @@ class ASTTokens(object):
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
   """
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
-    # type: (Any, bool, Optional[Module], str) -> None
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
+    # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
     # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -67,7 +67,9 @@ class ASTTokens(object):
     self._line_numbers = LineNumbers(source_text)
 
     # Tokenize the code.
-    self._tokens = list(self._generate_tokens(source_text))
+    if tokens is None:
+      tokens = self._generate_tokens(source_text)
+    self._tokens = list(self._translate_tokens(tokens))
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
     self._token_offsets = [tok.startpos for tok in self._tokens]
@@ -90,14 +92,21 @@ class ASTTokens(object):
 
 
   def _generate_tokens(self, text):
-    # type: (str) -> Iterator[Token]
+    # type: (str) -> Iterator[TokenInfo]
     """
-    Generates tokens for the given code.
+    Generates standard library tokens for the given code.
     """
     # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
     # Python2. See http://stackoverflow.com/a/4952291/328565.
     # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    original_tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
+    return tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
+
+
+  def _translate_tokens(self, original_tokens):
+    # type: (Iterable[TokenInfo]) -> Iterator[Token]
+    """
+    Translates the given standard library tokens into our own representation.
+    """
     for index, tok in enumerate(patched_generate_tokens(original_tokens)):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,

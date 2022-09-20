@@ -19,7 +19,7 @@ import token
 import tokenize
 from abc import ABCMeta
 from ast import Module, expr, AST
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
 from six import iteritems
 
@@ -325,11 +325,11 @@ if sys.version_info[0] == 2:
   # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
   # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
   def patched_generate_tokens(original_tokens):
-    # type: (Iterator[TokenInfo]) -> Iterator[TokenInfo]
-    return original_tokens
+    # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
+    return iter(original_tokens)
 else:
   def patched_generate_tokens(original_tokens):
-    # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+    # type: (Iterable[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
     """
     Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
     Workaround for https://github.com/python/cpython/issues/68382.

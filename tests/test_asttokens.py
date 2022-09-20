@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
+import io
 import six
 import token
 import tokenize
 import unittest
+from typing import Callable, cast
 from .context import asttokens
 
 class TestASTTokens(unittest.TestCase):
@@ -13,6 +15,38 @@ class TestASTTokens(unittest.TestCase):
     # Test that we produce meaningful tokens on initialization.
     source = "import re  # comment\n\nfoo = 'bar'\n"
     atok = asttokens.ASTTokens(source)
+    self.assertEqual(atok.text, source)
+    self.assertEqual([str(t) for t in atok.tokens], [
+      "NAME:'import'",
+      "NAME:'re'",
+      "COMMENT:'# comment'",
+      "NEWLINE:'\\n'",
+      "NL:'\\n'",
+      "NAME:'foo'",
+      "OP:'='",
+      'STRING:"\'bar\'"',
+      "NEWLINE:'\\n'",
+      "ENDMARKER:''"
+    ])
+
+    self.assertEqual(atok.tokens[5].type, token.NAME)
+    self.assertEqual(atok.tokens[5].string, 'foo')
+    self.assertEqual(atok.tokens[5].index, 5)
+    self.assertEqual(atok.tokens[5].startpos, 22)
+    self.assertEqual(atok.tokens[5].endpos, 25)
+
+
+  def test_given_existing_tokens(self):
+    # type: () -> None
+    # Test that we process a give list of tokens on initialization.
+    source = "import re  # comment\n\nfoo = 'bar'\n"
+
+    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
+    # Python2. See http://stackoverflow.com/a/4952291/328565.
+    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
+    tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(source).readline))
+
+    atok = asttokens.ASTTokens(source, tokens=tokens)
     self.assertEqual(atok.text, source)
     self.assertEqual([str(t) for t in atok.tokens], [
       "NAME:'import'",
