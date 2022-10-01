@@ -22,7 +22,7 @@ from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 import six
 
 from . import util
-from .asttokens import ASTTokens
+from .asttokens import ASTTokens, supports_unmarked
 from .util import AstConstant
 
 try:
@@ -358,6 +358,9 @@ class MarkTokens(object):
                       last_token,  # type: util.Token
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
+    if isinstance(node, ast.AST) and supports_unmarked():
+      for child in ast.walk(node):
+        child._in_f_string = True
     return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):

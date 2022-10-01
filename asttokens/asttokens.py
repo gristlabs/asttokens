@@ -236,7 +236,11 @@ class ASTTokens(object):
     """
     TODO
     """
-    if unmarked or (not self._tokens and supports_unmarked(node)):
+    in_f_string = getattr(node, "_in_f_string", False)
+    if unmarked or (
+        (not self._tokens or in_f_string)
+        and supports_unmarked(node)
+    ):
       return self._get_text_positions_unmarked(node, padded)
 
     self.init_tokens()

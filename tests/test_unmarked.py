@@ -12,7 +12,7 @@ if x > 0:
   for i in range(10):
     print(i)
 else:
-  print(f"{x} is negative")
+  print(f"{x + 2} is negative {1.23:.2f} {'a':!r} {x =}")
 """
 
 
@@ -50,7 +50,10 @@ class TestUmarked(unittest.TestCase):
 
     has_tokens = False
     for node in ast.walk(atok.tree):
-      atok.get_text(node, padded=True)
+      atok_text = atok.get_text(node, padded=True)
+      ast_text = ast.get_source_segment(source, node, padded=True)
+      if ast_text:
+        self.assertEqual(atok_text, ast_text, node)
 
       if isinstance(node, ast.arguments):
         has_tokens = True
