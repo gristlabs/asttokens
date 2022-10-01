@@ -260,6 +260,11 @@ class ASTTokens(object):
     if not supports_unmarked():
       raise NotImplementedError('Python version not supported')
 
+    # This is already checked above, but this check is recognized by mypy.
+    # This prevents errors below with end_lineno and end_col_offset.
+    if TYPE_CHECKING and sys.version_info[:2] < (3, 8):
+      raise NotImplementedError('Python version not supported')
+
     if not isinstance(node, ast.AST):
       raise NotImplementedError('Not supported for astroid')
 
