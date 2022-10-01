@@ -21,7 +21,7 @@ class TestUmarked(unittest.TestCase):
   def test_unmarked(self):
     atok = asttokens.ASTTokens(source, parse=True, init_tokens=False)
     for node in ast.walk(atok.tree):
-      if isinstance(node, ast.arguments):
+      if isinstance(node, (ast.arguments, ast.arg)):
         continue
 
       self.assertTrue(supports_unmarked(node), node)
