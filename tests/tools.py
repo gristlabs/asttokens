@@ -70,6 +70,12 @@ class MarkChecker(object):
     number of nodes that were tested this way.
     """
     test_case.longMessage = True
+
+    if supports_unmarked() and not test_case.is_astroid_test:
+      num_unmarked = sum(supports_unmarked(n) for n in self.all_nodes)
+      num_nodes = len(self.all_nodes)
+      test_case.assertGreater(num_unmarked / num_nodes, 0.5, (num_unmarked, num_nodes))
+
     tested_nodes = 0
     for node in self.all_nodes:
       text = self.atok.get_text(node)
