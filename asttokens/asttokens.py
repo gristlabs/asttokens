@@ -257,12 +257,9 @@ class ASTTokens(object):
     """
     TODO
     """
-    if not supports_unmarked():
-      raise NotImplementedError('Python version not supported')
-
-    # This is already checked above, but this check is recognized by mypy.
-    # This prevents errors below with end_lineno and end_col_offset.
-    if TYPE_CHECKING and sys.version_info[:2] < (3, 8):
+    # supports_unmarked() already checks the Python version, but writing it this way
+    # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
+    if sys.version_info[:2] < (3, 8) or not supports_unmarked():
       raise NotImplementedError('Python version not supported')
 
     if not isinstance(node, ast.AST):
