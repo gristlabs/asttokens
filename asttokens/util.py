@@ -24,7 +24,7 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Un
 
 from six import iteritems
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
   from astroid.node_classes import NodeNG
 
   # Type class used to expand out the definition of AST to include fields added by this library

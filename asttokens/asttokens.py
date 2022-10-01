@@ -25,7 +25,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 from .line_numbers import LineNumbers
 from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, generate_tokens
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
   from .util import AstNode, TokenInfo
 
 
