@@ -6,6 +6,9 @@ from asttokens import asttokens, supports_unmarked
 source = """
 x = 1
 if x > 0:
+  def foo(bar):
+    pass
+
   for i in range(10):
     print(i)
 else:
@@ -18,6 +21,9 @@ class TestUmarked(unittest.TestCase):
   def test_unmarked(self):
     atok = asttokens.ASTTokens(source, parse=True, init_tokens=False)
     for node in ast.walk(atok.tree):
+      if isinstance(node, ast.arguments):
+        continue
+
       self.assertTrue(supports_unmarked(node), node)
 
       if not hasattr(node, 'lineno'):
@@ -41,6 +47,21 @@ class TestUmarked(unittest.TestCase):
         )
 
     self.assertIsNone(atok._tokens)
-    self.assertIsNone(atok._token_offsets)
-    with self.assertRaises(AssertionError):
-      getattr(atok, 'tokens')
+
+    has_tokens = False
+    for node in ast.walk(atok.tree):
+      atok.get_text(node, padded=True)
+
+      if isinstance(node, ast.arguments):
+        has_tokens = True
+
+      self.assertEqual(atok._tokens is not None, has_tokens)
+      self.assertEqual(atok._tokens is not None, has_tokens)
+
+      if has_tokens:
+        getattr(atok, 'tokens')
+      else:
+        with self.assertRaises(AssertionError):
+          getattr(atok, 'tokens')
+
+    self.assertIsNotNone(atok._tokens)
