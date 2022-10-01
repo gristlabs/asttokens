@@ -329,7 +329,7 @@ if sys.version_info[0] == 2:
     return iter(original_tokens)
 else:
   def patched_generate_tokens(original_tokens):
-    # type: (Iterable[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+    # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
     """
     Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
     Workaround for https://github.com/python/cpython/issues/68382.
