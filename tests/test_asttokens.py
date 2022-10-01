@@ -39,7 +39,20 @@ class TestASTTokens(unittest.TestCase):
   def test_given_existing_tokens(self):
     # type: () -> None
     # Test that we process a give list of tokens on initialization.
-    self.assertTokenizing(asttokens.util.generate_tokens)
+
+    self.was_called = False
+
+    def generate_tokens(source):
+      def tokens_iter():
+        # force nonlocal into scope
+        for token in asttokens.util.generate_tokens(source):
+          yield token
+        self.was_called = True
+      return tokens_iter()
+
+    self.assertTokenizing(generate_tokens)
+
+    self.assertTrue(self.was_called, "Should have used tokens from given iterable")
 
 
   def test_token_methods(self):
