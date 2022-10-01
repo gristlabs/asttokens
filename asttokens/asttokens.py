@@ -231,13 +231,13 @@ class ASTTokens(object):
     """
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
-  def get_text_positions(self, node, unmarked=False):
-    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def get_text_positions(self, node, padded, unmarked=False):
+    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     TODO
     """
     if unmarked or (not self._tokens and supports_unmarked(node)):
-      return self._get_text_positions_unmarked(node)
+      return self._get_text_positions_unmarked(node, padded)
 
     self.init_tokens()
 
@@ -246,14 +246,13 @@ class ASTTokens(object):
 
     start = node.first_token.start
     end = node.last_token.end
-    if any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
-      # Multi-line nodes would be invalid unless we keep the indentation of the first node.
+    if padded and any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
       start = (start[0], 0)
 
     return start, end
 
-  def _get_text_positions_unmarked(self, node):
-    # type: (AstNode) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def _get_text_positions_unmarked(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     TODO
     """
@@ -284,9 +283,7 @@ class ASTTokens(object):
     else:
       start_node = node
 
-    # Like get_text_range(), keep the indentation of the first line
-    # of a multi-line, multi-statement node.
-    if last_stmt(node).lineno != node.lineno:
+    if padded and last_stmt(node).lineno != node.lineno:
       start_col_offset = 0
     else:
       start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
@@ -304,26 +301,26 @@ class ASTTokens(object):
 
     return start, end
 
-  def get_text_range(self, node, unmarked=False):
-    # type: (AstNode, bool) -> Tuple[int, int]
+  def get_text_range(self, node, padded=True, unmarked=False):
+    # type: (AstNode, bool, bool) -> Tuple[int, int]
     """
     After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
     corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
     to any particular text.
     """
-    start, end = self.get_text_positions(node, unmarked)
+    start, end = self.get_text_positions(node, padded, unmarked)
     return (
       self._line_numbers.line_to_offset(*start),
       self._line_numbers.line_to_offset(*end),
     )
 
-  def get_text(self, node, unmarked=False):
-    # type: (AstNode, bool) -> str
+  def get_text(self, node, padded=True, unmarked=False):
+    # type: (AstNode, bool, bool) -> str
     """
     After mark_tokens() has been called, returns the text corresponding to the given node. Returns
     '' for nodes (like `Load`) that don't correspond to any particular text.
     """
-    start, end = self.get_text_range(node, unmarked)
+    start, end = self.get_text_range(node, padded, unmarked)
     return self._text[start : end]
 
 
