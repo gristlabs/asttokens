@@ -14,18 +14,16 @@
 
 import ast
 import bisect
-import io
 import sys
 import token
-import tokenize
 from ast import Module
-from typing import Callable, Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
+from typing import Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from .line_numbers import LineNumbers
-from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt
+from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, generate_tokens
 
 if TYPE_CHECKING:
   from .util import AstNode, TokenInfo
@@ -68,7 +66,7 @@ class ASTTokens(object):
 
     # Tokenize the code.
     if tokens is None:
-      tokens = self._generate_tokens(source_text)
+      tokens = generate_tokens(source_text)
     self._tokens = list(self._translate_tokens(tokens))
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
@@ -89,17 +87,6 @@ class ASTTokens(object):
     # The hard work of this class is done by MarkTokens
     from .mark_tokens import MarkTokens # to avoid import loops
     MarkTokens(self).visit_tree(root_node)
-
-
-  def _generate_tokens(self, text):
-    # type: (str) -> Iterator[TokenInfo]
-    """
-    Generates standard library tokens for the given code.
-    """
-    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
-    # Python2. See http://stackoverflow.com/a/4952291/328565.
-    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    return tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
 
 
   def _translate_tokens(self, original_tokens):

@@ -14,6 +14,7 @@
 
 import ast
 import collections
+import io
 import sys
 import token
 import tokenize
@@ -108,6 +109,17 @@ else:
     These are considered non-coding tokens, as they don't affect the syntax tree.
     """
     return token_type >= token.N_TOKENS
+
+
+def generate_tokens(text):
+  # type: (str) -> Iterator[TokenInfo]
+  """
+  Generates standard library tokens for the given code.
+  """
+  # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
+  # Python2. See http://stackoverflow.com/a/4952291/328565.
+  # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
+  return tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
 
 
 def iter_children_func(node):

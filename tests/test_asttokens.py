@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
-import io
 import six
 import token
 import tokenize
 import unittest
-from typing import Callable, cast
 from .context import asttokens
 
 class TestASTTokens(unittest.TestCase):
@@ -41,10 +39,7 @@ class TestASTTokens(unittest.TestCase):
     # Test that we process a give list of tokens on initialization.
     source = "import re  # comment\n\nfoo = 'bar'\n"
 
-    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
-    # Python2. See http://stackoverflow.com/a/4952291/328565.
-    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(source).readline))
+    tokens = asttokens.util.generate_tokens(source)
 
     atok = asttokens.ASTTokens(source, tokens=tokens)
     self.assertEqual(atok.text, source)
