@@ -25,6 +25,10 @@ from foo.bar import baz as spam
 
 
 def is_fstring_format_spec(node):
+  """
+  Returns True if the given node is a format specifier in an f-string.
+  Only applies for nodes parsed from the source above.
+  """
   return (
       isinstance(node, ast.JoinedStr)
       and len(node.values) == 1
