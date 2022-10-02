@@ -16,7 +16,7 @@ else:
 def foo(bar):
   pass
 
-print(f"{x + 2} is negative {1.23:.2f} {'a'!r} {x =}")
+print(f"{x + 2} is negative {1.23:.2f} {'a'!r} {x =} {aa:{bb}}")
 
 import a
 import b as c, d.e as f
@@ -28,8 +28,16 @@ def is_fstring_format_spec(node):
   return (
       isinstance(node, ast.JoinedStr)
       and len(node.values) == 1
-      and isinstance(node.values[0], ast.Constant)
-      and node.values[0].value in ['.2f']
+      and (
+          (
+              isinstance(node.values[0], ast.Str)
+              and node.values[0].value in ['.2f']
+          ) or (
+              isinstance(node.values[0], ast.FormattedValue)
+              and isinstance(node.values[0].value, ast.Name)
+              and node.values[0].value.id == 'bb'
+          )
+      )
   )
 
 
@@ -71,7 +79,7 @@ class TestUmarked(unittest.TestCase):
       ast_text = ast.get_source_segment(source, node, padded=True)
       if ast_text:
         if (
-            ast_text.startswith("f") and isinstance(node, (ast.Constant, ast.FormattedValue))
+            ast_text.startswith("f") and isinstance(node, (ast.Str, ast.FormattedValue))
             or is_fstring_format_spec(node)
         ):
           self.assertEqual(atok_text, "", node)

@@ -370,14 +370,18 @@ class MarkTokens(object):
       # We mark these with _broken_positions to indicate that an empty text range should be returned.
       assert isinstance(node, ast.JoinedStr)
       for part in node.values:
-        if isinstance(part, ast.Constant):  # static text part between formatted values
+        if isinstance(part, ast.Str):  # static text part between formatted values
           part._broken_positions = True  # type: ignore
         else:
-          assert isinstance(part, ast.FormattedValue)
+          assert isinstance(part, ast.FormattedValue), part
           for child in ast.walk(part.value):
             child._dont_use_tokens = True  # type: ignore
           if part.format_spec:  # this is another JoinedStr
             part.format_spec._broken_positions = True  # type: ignore
+            # Recursively handle this inner JoinedStr in the same way.
+            # While this is usually automatic for other nodes,
+            # the children of f-strings are explicitly excluded in iter_children_ast.
+            self.visit_joinedstr(part.format_spec, first_token, last_token)
 
     return self.handle_str(first_token, last_token)
 
