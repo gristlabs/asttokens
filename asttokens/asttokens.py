@@ -49,6 +49,15 @@ class ASTTokens(object):
 
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
+
+  If ``init_tokens`` is False, the text will not be tokenized and the nodes won't be marked.
+  This can save significant CPU time. In this case token-specific methods such as ``.get_token``
+  will raise an error, but position-related methods such as ``.get_text(node)`` will still work.
+  You can still call ``.init_tokens()`` later to tokenize the text and mark the nodes.
+  ``init_tokens=False`` will be ignored for Python < 3.8 or PyPy.
+  It will raise an error if ``tree`` is an astroid tree.
+  Finally, note that methods such as ``.get_text(node)`` may still automatically call ``.init_tokens()``
+  for specific unusual types of node that aren't supported.
   """
 
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', init_tokens=True):
@@ -78,6 +87,11 @@ class ASTTokens(object):
 
   def init_tokens(self):
     # type: () -> None
+    """
+    Tokenizes the source text and marks the AST tree with token information.
+    Only needed if ``init_tokens=False`` was passed to the constructor.
+    Only needs to be called once, repeated calls are ignored.
+    """
     if self._tokens is not None:
       return
 
@@ -234,10 +248,24 @@ class ASTTokens(object):
   def get_text_positions(self, node, padded, unmarked=False):
     # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    TODO
+    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
+    If the positions can't be determined, returns ``(1, 0)`` for both.
+
+    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    This means that if ``padded`` is True, the start position will be adjusted to include
+    leading whitespace if ``node`` is a multiline statement.
+
+    Use ``unmarked=True`` to force the method to not use token information.
+    This is not recommended for external use as it may raise errors or return incorrect results
+    for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
     """
     in_f_string = getattr(node, "_in_f_string", False)
+    # Always use the unmarked method when unmarked=True.
     if unmarked or (
+        # For nodes that work with the unmarked method, prefer it if either:
+        # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
+        # 2. The node is better handled by the unmarked method. This applies to import aliases
+        #    and nodes within f-strings.
         (not self._tokens or in_f_string or isinstance(node, (ast.alias)))
         and supports_unmarked(node)
     ):
@@ -251,6 +279,7 @@ class ASTTokens(object):
     start = node.first_token.start
     end = node.last_token.end
     if padded and any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
+      # Set col_offset to 0 to include leading indentation for multiline statements.
       start = (start[0], 0)
 
     return start, end
@@ -258,7 +287,11 @@ class ASTTokens(object):
   def _get_text_positions_unmarked(self, node, padded):
     # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    TODO
+    Unmarked version of ``get_text_positions()``.
+
+    Raises an error for unsupported Python versions, unlike ``init_tokens=False``.
+    Raises an error for astroid tree.
+    Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
     """
     # supports_unmarked() already checks the Python version, but writing it this way
     # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
@@ -270,7 +303,7 @@ class ASTTokens(object):
 
     if isinstance(node, ast.Module):
       # Modules don't have position info, so just return the range of the whole text.
-      # get_text does something different, but its behavior seems weird and inconsistent.
+      # The token-using method does something different, but its behavior seems weird and inconsistent.
       # For example, in a file with only comments, it only returns the first line.
       # It's hard to imagine a case when this matters.
       return (1, 0), self._line_numbers.offset_to_line(len(self._text))
@@ -281,20 +314,21 @@ class ASTTokens(object):
     decorators = getattr(node, 'decorator_list', [])
     if decorators:
       # Function/Class definition nodes are marked by AST as starting at def/class,
-      # not the first decorator. This doesn't match the original get_text[_range] behavior,
+      # not the first decorator. This doesn't match the token-using behavior,
       # or inspect.getsource(), and just seems weird.
       start_node = decorators[0]
     else:
       start_node = node
 
     if padded and last_stmt(node).lineno != node.lineno:
+      # Include leading indentation for multiline statements.
       start_col_offset = 0
     else:
       start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
 
     start = (start_node.lineno, start_col_offset)
 
-    # To match the behavior of get_text_range, we exclude trailing semicolons and comments.
+    # To match the token-using behaviour, we exclude trailing semicolons and comments.
     # This means that for blocks containing multiple statements, we have to use the last one
     # instead of the actual node for end_lineno and end_col_offset.
     end_node = last_stmt(node)
@@ -308,9 +342,10 @@ class ASTTokens(object):
   def get_text_range(self, node, padded=True, unmarked=False):
     # type: (AstNode, bool, bool) -> Tuple[int, int]
     """
-    After mark_tokens() has been called, returns the (startpos, endpos) positions in source text
-    corresponding to the given node. Returns (0, 0) for nodes (like `Load`) that don't correspond
-    to any particular text.
+    Returns the (startpos, endpos) positions in source text corresponding to the given node.
+    Returns (0, 0) for nodes (like `Load`) that don't correspond to any particular text.
+
+    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
     """
     start, end = self.get_text_positions(node, padded, unmarked)
     return (
@@ -321,8 +356,10 @@ class ASTTokens(object):
   def get_text(self, node, padded=True, unmarked=False):
     # type: (AstNode, bool, bool) -> str
     """
-    After mark_tokens() has been called, returns the text corresponding to the given node. Returns
-    '' for nodes (like `Load`) that don't correspond to any particular text.
+    Returns the text corresponding to the given node.
+    Returns '' for nodes (like `Load`) that don't correspond to any particular text.
+
+    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
     """
     start, end = self.get_text_range(node, padded, unmarked)
     return self._text[start : end]

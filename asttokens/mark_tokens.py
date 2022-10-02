@@ -359,6 +359,9 @@ class MarkTokens(object):
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
     if isinstance(node, ast.AST) and supports_unmarked():
+      # Mark all descendants of f-strings as being in an f-string.
+      # This tells get_text_positions to continue using the unmarked method,
+      # as the token-using method doesn't work for f-strings.
       for child in ast.walk(node):
         child._in_f_string = True  # type: ignore
     return self.handle_str(first_token, last_token)
