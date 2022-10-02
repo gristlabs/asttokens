@@ -360,7 +360,7 @@ class MarkTokens(object):
     # type: (...) -> Tuple[util.Token, util.Token]
     if isinstance(node, ast.AST) and supports_unmarked():
       for child in ast.walk(node):
-        child._in_f_string = True
+        child._in_f_string = True  # type: ignore
     return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):
