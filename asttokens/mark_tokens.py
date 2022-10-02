@@ -358,7 +358,8 @@ class MarkTokens(object):
                       last_token,  # type: util.Token
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
-    assert sys.version_info[:2] >= (3, 6)  # for mypy
+    if sys.version_info[:2] < (3, 6):
+      raise AssertionError  # for mypy
 
     if isinstance(node, ast.JoinedStr):  # i.e. not astroid
       # f-strings are complicated.
@@ -371,13 +372,13 @@ class MarkTokens(object):
       assert isinstance(node, ast.JoinedStr)
       for part in node.values:
         if isinstance(part, ast.Str):  # static text part between formatted values
-          part._broken_positions = True  # type: ignore
+          setattr(part, '_broken_positions', True)  # use setattr for mypy
         else:
           assert isinstance(part, ast.FormattedValue), part
           for child in ast.walk(part.value):
-            child._dont_use_tokens = True  # type: ignore
+            setattr(child, '_dont_use_tokens', True)
           if part.format_spec:  # this is another JoinedStr
-            part.format_spec._broken_positions = True  # type: ignore
+            setattr(part.format_spec, '_broken_positions', True)
             # Recursively handle this inner JoinedStr in the same way.
             # While this is usually automatic for other nodes,
             # the children of f-strings are explicitly excluded in iter_children_ast.
