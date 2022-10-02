@@ -312,6 +312,8 @@ class ASTTokens(object):
     if not hasattr(node, 'lineno'):
       return (1, 0), (1, 0)
 
+    assert node  # tell mypy that node is not None, which we allowed up to here for compatibility
+
     decorators = getattr(node, 'decorator_list', [])
     if decorators:
       # Function/Class definition nodes are marked by AST as starting at def/class,
