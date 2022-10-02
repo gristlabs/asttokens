@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import ast
 import bisect
 import io
@@ -31,44 +32,13 @@ if TYPE_CHECKING:
   from .util import AstNode
 
 
-class ASTTokens(object):
-  """
-  ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
-  as tokens, and is used to mark and access token and position information.
-
-  ``source_text`` must be a unicode or UTF8-encoded string. If you pass in UTF8 bytes, remember
-  that all offsets you'll get are to the unicode text, which is available as the ``.text``
-  property.
-
-  If ``parse`` is set, the ``source_text`` will be parsed with ``ast.parse()``, and the resulting
-  tree marked with token info and made available as the ``.tree`` property.
-
-  If ``tree`` is given, it will be marked and made available as the ``.tree`` property. In
-  addition to the trees produced by the ``ast`` module, ASTTokens will also mark trees produced
-  using ``astroid`` library <https://www.astroid.org>.
-
-  If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
-  tree created separately.
-
-  If ``init_tokens`` is False, the text will not be tokenized and the nodes won't be marked.
-  This can save significant CPU time. In this case token-specific methods such as ``.get_token``
-  will raise an error, but position-related methods such as ``.get_text(node)`` will still work.
-  You can still call ``.init_tokens()`` later to tokenize the text and mark the nodes.
-  ``init_tokens=False`` will be ignored for Python < 3.8 or PyPy.
-  It will raise an error if ``tree`` is an astroid tree.
-  Finally, note that methods such as ``.get_text(node)`` may still automatically call ``.init_tokens()``
-  for specific unusual types of node that aren't supported.
-  """
-
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', init_tokens=True):
-    # type: (Any, bool, Optional[Module], str, bool) -> None
+class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
+  def __init__(self, source_text, filename):
+    # type: (Any, str) -> None
     # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     self._filename = filename
-    self._tree = ast.parse(source_text, filename) if parse else tree
-    if self._tree is not None:
-      annotate_fstring_nodes(self._tree)
 
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,
@@ -78,217 +48,10 @@ class ASTTokens(object):
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
 
-    self._tokens = None  # type: Optional[List[Token]]
-    self._token_offsets = None  # type: Optional[List[int]]
-
-    if not init_tokens and not isinstance(self._tree, (ast.AST, type(None))):
-      raise NotImplementedError('init_tokens=False is only supported for AST trees')
-
-    if init_tokens or not supports_unmarked(self._tree):
-      self.init_tokens()
-
-  def init_tokens(self):
-    # type: () -> None
-    """
-    Tokenizes the source text and marks the AST tree with token information.
-    Only needed if ``init_tokens=False`` was passed to the constructor.
-    Only needs to be called once, repeated calls are ignored.
-    """
-    if self._tokens is not None:
-      return
-
-    # Tokenize the code.
-    self._tokens = list(self._generate_tokens(self._text))
-
-    # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
-    self._token_offsets = [tok.startpos for tok in self._tokens]
-
-    if self._tree:
-      self.mark_tokens(self._tree)
-
-  def mark_tokens(self, root_node):
-    # type: (Module) -> None
-    """
-    Given the root of the AST or Astroid tree produced from source_text, visits all nodes marking
-    them with token and position information by adding ``.first_token`` and
-    ``.last_token``attributes. This is done automatically in the constructor when ``parse`` or
-    ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
-    """
-    # The hard work of this class is done by MarkTokens
-    from .mark_tokens import MarkTokens # to avoid import loops
-    MarkTokens(self).visit_tree(root_node)
-
-  def _generate_tokens(self, text):
-    # type: (str) -> Iterator[Token]
-    """
-    Generates tokens for the given code.
-    """
-    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
-    # Python2. See http://stackoverflow.com/a/4952291/328565.
-    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    original_tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
-    for index, tok in enumerate(patched_generate_tokens(original_tokens)):
-      tok_type, tok_str, start, end, line = tok
-      yield Token(tok_type, tok_str, start, end, line, index,
-                  self._line_numbers.line_to_offset(start[0], start[1]),
-                  self._line_numbers.line_to_offset(end[0], end[1]))
-
-  @property
-  def text(self):
-    # type: () -> str
-    """The source code passed into the constructor."""
-    return self._text
-
-  @property
-  def tokens(self):
-    # type: () -> List[Token]
-    """The list of tokens corresponding to the source code from the constructor."""
-    assert self._tokens
-    return self._tokens
-
-  @property
-  def tree(self):
-    # type: () -> Optional[Module]
-    """The root of the AST tree passed into the constructor or parsed from the source code."""
-    return self._tree
-
-  @property
-  def filename(self):
-    # type: () -> str
-    """The filename that was parsed"""
-    return self._filename
-
-  def get_token_from_offset(self, offset):
-    # type: (int) -> Token
-    """
-    Returns the token containing the given character offset (0-based position in source text),
-    or the preceeding token if the position is between tokens.
-    """
-    assert self._token_offsets and self._tokens
-    return self._tokens[bisect.bisect(self._token_offsets, offset) - 1]
-
-  def get_token(self, lineno, col_offset):
-    # type: (int, int) -> Token
-    """
-    Returns the token containing the given (lineno, col_offset) position, or the preceeding token
-    if the position is between tokens.
-    """
-    # TODO: add test for multibyte unicode. We need to translate offsets from ast module (which
-    # are in utf8) to offsets into the unicode text. tokenize module seems to use unicode offsets
-    # but isn't explicit.
-    return self.get_token_from_offset(self._line_numbers.line_to_offset(lineno, col_offset))
-
-  def get_token_from_utf8(self, lineno, col_offset):
-    # type: (int, int) -> Token
-    """
-    Same as get_token(), but interprets col_offset as a UTF8 offset, which is what `ast` uses.
-    """
-    return self.get_token(lineno, self._line_numbers.from_utf8_col(lineno, col_offset))
-
-  def next_token(self, tok, include_extra=False):
-    # type: (Token, bool) -> Token
-    """
-    Returns the next token after the given one. If include_extra is True, includes non-coding
-    tokens from the tokenize module, such as NL and COMMENT.
-    """
-    i = tok.index + 1
-    assert self._tokens
-    if not include_extra:
-      while is_non_coding_token(self._tokens[i].type):
-        i += 1
-    return self._tokens[i]
-
-  def prev_token(self, tok, include_extra=False):
-    # type: (Token, bool) -> Token
-    """
-    Returns the previous token before the given one. If include_extra is True, includes non-coding
-    tokens from the tokenize module, such as NL and COMMENT.
-    """
-    i = tok.index - 1
-    assert self._tokens
-    if not include_extra:
-      while is_non_coding_token(self._tokens[i].type):
-        i -= 1
-    return self._tokens[i]
-
-  def find_token(self, start_token, tok_type, tok_str=None, reverse=False):
-    # type: (Token, int, Optional[str], bool) -> Token
-    """
-    Looks for the first token, starting at start_token, that matches tok_type and, if given, the
-    token string. Searches backwards if reverse is True. Returns ENDMARKER token if not found (you
-    can check it with `token.ISEOF(t.type)`.
-    """
-    t = start_token
-    advance = self.prev_token if reverse else self.next_token
-    while not match_token(t, tok_type, tok_str) and not token.ISEOF(t.type):
-      t = advance(t, include_extra=True)
-    return t
-
-  def token_range(self,
-                  first_token,  # type: Token
-                  last_token,  # type: Token
-                  include_extra=False,  # type: bool
-                  ):
-    # type: (...) -> Iterator[Token]
-    """
-    Yields all tokens in order from first_token through and including last_token. If
-    include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
-    """
-    assert self._tokens
-    for i in xrange(first_token.index, last_token.index + 1):
-      if include_extra or not is_non_coding_token(self._tokens[i].type):
-        yield self._tokens[i]
-
-  def get_tokens(self, node, include_extra=False):
-    # type: (AstNode, bool) -> Iterator[Token]
-    """
-    Yields all tokens making up the given node. If include_extra is True, includes non-coding
-    tokens such as tokenize.NL and .COMMENT.
-    """
-    return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
-
+  @abc.abstractmethod
   def get_text_positions(self, node, padded, unmarked=False):
     # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
-    """
-    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
-    If the positions can't be determined, or the nodes don't correspond to any particular text,
-    returns ``(1, 0)`` for both.
-
-    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
-    This means that if ``padded`` is True, the start position will be adjusted to include
-    leading whitespace if ``node`` is a multiline statement.
-
-    Use ``unmarked=True`` to force the method to not use token information.
-    This is not recommended for external use as it may raise errors or return incorrect results
-    for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
-    """
-    if getattr(node, "_broken_positions", None):
-      return (1, 0), (1, 0)
-
-    node_dont_use_tokens = getattr(node, "_dont_use_tokens", None)
-    # Always use the unmarked method when unmarked=True.
-    if unmarked or (
-        # For nodes that work with the unmarked method, prefer it if either:
-        # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
-        # 2. The node is better handled by the unmarked method. This applies to import aliases
-        #    and nodes within f-strings.
-        (not self._tokens or node_dont_use_tokens or isinstance(node, (ast.alias)))
-        and supports_unmarked(node)
-    ):
-      return self._get_text_positions_unmarked(node, padded)
-
-    self.init_tokens()
-
-    if not hasattr(node, 'first_token'):
-      return (1, 0), (1, 0)
-
-    start = node.first_token.start
-    end = node.last_token.end
-    if padded and any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
-      # Set col_offset to 0 to include leading indentation for multiline statements.
-      start = (start[0], 0)
-
-    return start, end
+    raise NotImplementedError
 
   def _get_text_positions_unmarked(self, node, padded):
     # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
@@ -371,6 +134,278 @@ class ASTTokens(object):
     """
     start, end = self.get_text_range(node, padded, unmarked)
     return self._text[start : end]
+
+
+class ASTTokens(ASTTextBase, object):
+  """
+  ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
+  as tokens, and is used to mark and access token and position information.
+
+  ``source_text`` must be a unicode or UTF8-encoded string. If you pass in UTF8 bytes, remember
+  that all offsets you'll get are to the unicode text, which is available as the ``.text``
+  property.
+
+  If ``parse`` is set, the ``source_text`` will be parsed with ``ast.parse()``, and the resulting
+  tree marked with token info and made available as the ``.tree`` property.
+
+  If ``tree`` is given, it will be marked and made available as the ``.tree`` property. In
+  addition to the trees produced by the ``ast`` module, ASTTokens will also mark trees produced
+  using ``astroid`` library <https://www.astroid.org>.
+
+  If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
+  tree created separately.
+  """
+
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
+    # type: (Any, bool, Optional[Module], str) -> None
+    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    super(ASTTokens, self).__init__(source_text, filename)
+
+    self._tree = ast.parse(source_text, filename) if parse else tree
+    if self._tree is not None:
+      annotate_fstring_nodes(self._tree)
+
+    # Tokenize the code.
+    self._tokens = list(self._generate_tokens(self._text))
+
+    # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
+    self._token_offsets = [tok.startpos for tok in self._tokens]
+
+    if self._tree:
+      self.mark_tokens(self._tree)
+
+  def mark_tokens(self, root_node):
+    # type: (Module) -> None
+    """
+    Given the root of the AST or Astroid tree produced from source_text, visits all nodes marking
+    them with token and position information by adding ``.first_token`` and
+    ``.last_token``attributes. This is done automatically in the constructor when ``parse`` or
+    ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
+    """
+    # The hard work of this class is done by MarkTokens
+    from .mark_tokens import MarkTokens # to avoid import loops
+    MarkTokens(self).visit_tree(root_node)
+
+  def _generate_tokens(self, text):
+    # type: (str) -> Iterator[Token]
+    """
+    Generates tokens for the given code.
+    """
+    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
+    # Python2. See http://stackoverflow.com/a/4952291/328565.
+    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
+    original_tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
+    for index, tok in enumerate(patched_generate_tokens(original_tokens)):
+      tok_type, tok_str, start, end, line = tok
+      yield Token(tok_type, tok_str, start, end, line, index,
+                  self._line_numbers.line_to_offset(start[0], start[1]),
+                  self._line_numbers.line_to_offset(end[0], end[1]))
+
+  @property
+  def text(self):
+    # type: () -> str
+    """The source code passed into the constructor."""
+    return self._text
+
+  @property
+  def tokens(self):
+    # type: () -> List[Token]
+    """The list of tokens corresponding to the source code from the constructor."""
+    return self._tokens
+
+  @property
+  def tree(self):
+    # type: () -> Optional[Module]
+    """The root of the AST tree passed into the constructor or parsed from the source code."""
+    return self._tree
+
+  @property
+  def filename(self):
+    # type: () -> str
+    """The filename that was parsed"""
+    return self._filename
+
+  def get_token_from_offset(self, offset):
+    # type: (int) -> Token
+    """
+    Returns the token containing the given character offset (0-based position in source text),
+    or the preceeding token if the position is between tokens.
+    """
+    assert self._token_offsets and self._tokens
+    return self._tokens[bisect.bisect(self._token_offsets, offset) - 1]
+
+  def get_token(self, lineno, col_offset):
+    # type: (int, int) -> Token
+    """
+    Returns the token containing the given (lineno, col_offset) position, or the preceeding token
+    if the position is between tokens.
+    """
+    # TODO: add test for multibyte unicode. We need to translate offsets from ast module (which
+    # are in utf8) to offsets into the unicode text. tokenize module seems to use unicode offsets
+    # but isn't explicit.
+    return self.get_token_from_offset(self._line_numbers.line_to_offset(lineno, col_offset))
+
+  def get_token_from_utf8(self, lineno, col_offset):
+    # type: (int, int) -> Token
+    """
+    Same as get_token(), but interprets col_offset as a UTF8 offset, which is what `ast` uses.
+    """
+    return self.get_token(lineno, self._line_numbers.from_utf8_col(lineno, col_offset))
+
+  def next_token(self, tok, include_extra=False):
+    # type: (Token, bool) -> Token
+    """
+    Returns the next token after the given one. If include_extra is True, includes non-coding
+    tokens from the tokenize module, such as NL and COMMENT.
+    """
+    i = tok.index + 1
+    if not include_extra:
+      while is_non_coding_token(self._tokens[i].type):
+        i += 1
+    return self._tokens[i]
+
+  def prev_token(self, tok, include_extra=False):
+    # type: (Token, bool) -> Token
+    """
+    Returns the previous token before the given one. If include_extra is True, includes non-coding
+    tokens from the tokenize module, such as NL and COMMENT.
+    """
+    i = tok.index - 1
+    if not include_extra:
+      while is_non_coding_token(self._tokens[i].type):
+        i -= 1
+    return self._tokens[i]
+
+  def find_token(self, start_token, tok_type, tok_str=None, reverse=False):
+    # type: (Token, int, Optional[str], bool) -> Token
+    """
+    Looks for the first token, starting at start_token, that matches tok_type and, if given, the
+    token string. Searches backwards if reverse is True. Returns ENDMARKER token if not found (you
+    can check it with `token.ISEOF(t.type)`.
+    """
+    t = start_token
+    advance = self.prev_token if reverse else self.next_token
+    while not match_token(t, tok_type, tok_str) and not token.ISEOF(t.type):
+      t = advance(t, include_extra=True)
+    return t
+
+  def token_range(self,
+                  first_token,  # type: Token
+                  last_token,  # type: Token
+                  include_extra=False,  # type: bool
+                  ):
+    # type: (...) -> Iterator[Token]
+    """
+    Yields all tokens in order from first_token through and including last_token. If
+    include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
+    """
+    for i in xrange(first_token.index, last_token.index + 1):
+      if include_extra or not is_non_coding_token(self._tokens[i].type):
+        yield self._tokens[i]
+
+  def get_tokens(self, node, include_extra=False):
+    # type: (AstNode, bool) -> Iterator[Token]
+    """
+    Yields all tokens making up the given node. If include_extra is True, includes non-coding
+    tokens such as tokenize.NL and .COMMENT.
+    """
+    return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
+
+  def get_text_positions(self, node, padded, unmarked=False):
+    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    """
+    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
+    If the positions can't be determined, or the nodes don't correspond to any particular text,
+    returns ``(1, 0)`` for both.
+
+    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    This means that if ``padded`` is True, the start position will be adjusted to include
+    leading whitespace if ``node`` is a multiline statement.
+
+    Use ``unmarked=True`` to force the method to not use token information.
+    This is not recommended for external use as it may raise errors or return incorrect results
+    for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
+    """
+    if getattr(node, "_broken_positions", None):
+      return (1, 0), (1, 0)
+
+    node_dont_use_tokens = getattr(node, "_dont_use_tokens", None)
+    # Always use the unmarked method when unmarked=True.
+    if unmarked or (
+        # For nodes that work with the unmarked method, prefer it if either:
+        # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
+        # 2. The node is better handled by the unmarked method. This applies to import aliases
+        #    and nodes within f-strings.
+        (node_dont_use_tokens or isinstance(node, (ast.alias)))
+        and supports_unmarked(node)
+    ):
+      return self._get_text_positions_unmarked(node, padded)
+
+    if not hasattr(node, 'first_token'):
+      return (1, 0), (1, 0)
+
+    start = node.first_token.start
+    end = node.last_token.end
+    if padded and any(match_token(t, token.NEWLINE) for t in self.get_tokens(node)):
+      # Set col_offset to 0 to include leading indentation for multiline statements.
+      start = (start[0], 0)
+
+    return start, end
+
+
+class ASTText(ASTTextBase, object):
+  def __init__(self, source_text, tree=None, filename='<unknown>'):
+    # type: (Any, Optional[Module], str) -> None
+    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    if not isinstance(tree, (ast.AST, type(None))):
+      raise NotImplementedError('ASTText only supports AST trees')
+
+    super(ASTText, self).__init__(source_text, filename)
+
+    self._tree = tree
+
+    self._asttokens = None  # type: Optional[ASTTokens]
+
+  @property
+  def tree(self):
+    # type: () -> Module
+    if self._tree is None:
+      self._tree = ast.parse(self._text, self._filename)
+    return self._tree
+
+  @property
+  def asttokens(self):
+    # type: () -> ASTTokens
+    if self._asttokens is None:
+      self._asttokens = ASTTokens(
+          self._text,
+          tree=self.tree,
+          filename=self._filename,
+      )
+    return self._asttokens
+
+  def get_text_positions(self, node, padded, unmarked=False):
+    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    """
+    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
+    If the positions can't be determined, or the nodes don't correspond to any particular text,
+    returns ``(1, 0)`` for both.
+
+    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    This means that if ``padded`` is True, the start position will be adjusted to include
+    leading whitespace if ``node`` is a multiline statement.
+
+    Use ``unmarked=True`` to force the method to not use token information,
+    however this will be preferred anyway for nodes where it is supported.
+    """
+    if unmarked or supports_unmarked(node):
+      return self._get_text_positions_unmarked(node, padded)
+
+    return self.asttokens.get_text_positions(node, padded, unmarked)
 
 
 # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
