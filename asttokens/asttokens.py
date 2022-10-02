@@ -249,7 +249,8 @@ class ASTTokens(object):
     # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
-    If the positions can't be determined, returns ``(1, 0)`` for both.
+    If the positions can't be determined, or the nodes don't correspond to any particular text,
+    returns ``(1, 0)`` for both.
 
     ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
