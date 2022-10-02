@@ -371,10 +371,8 @@ class MarkTokens(object):
       # We mark these with _broken_positions to indicate that an empty text range should be returned.
       assert isinstance(node, ast.JoinedStr)
       for part in node.values:
-        if isinstance(part, ast.Str):  # static text part between formatted values
-          setattr(part, '_broken_positions', True)  # use setattr for mypy
-        else:
-          assert isinstance(part, ast.FormattedValue), part
+        setattr(part, '_broken_positions', True)  # use setattr for mypy
+        if isinstance(part, ast.FormattedValue):
           for child in ast.walk(part.value):
             setattr(child, '_dont_use_tokens', True)
           if part.format_spec:  # this is another JoinedStr
