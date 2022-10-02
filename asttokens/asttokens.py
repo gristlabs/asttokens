@@ -71,7 +71,7 @@ class ASTTokens(object):
     self._token_offsets = None  # type: Optional[List[int]]
 
     if not init_tokens and not isinstance(self._tree, (ast.AST, type(None))):
-      raise ValueError('init_tokens=False is only supported for AST trees')
+      raise NotImplementedError('init_tokens=False is only supported for AST trees')
 
     if init_tokens or not supports_unmarked(self._tree):
       self.init_tokens()

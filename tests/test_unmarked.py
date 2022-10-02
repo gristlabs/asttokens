@@ -1,7 +1,9 @@
 import ast
 import unittest
 
-from asttokens import asttokens, supports_unmarked
+import astroid
+
+from asttokens import supports_unmarked, ASTTokens
 
 source = """
 x = 1
@@ -25,7 +27,7 @@ from foo.bar import baz as spam
 @unittest.skipUnless(supports_unmarked(), "Python version does not support unmarked nodes")
 class TestUmarked(unittest.TestCase):
   def test_unmarked(self):
-    atok = asttokens.ASTTokens(source, parse=True, init_tokens=False)
+    atok = ASTTokens(source, parse=True, init_tokens=False)
     for node in ast.walk(atok.tree):
       if isinstance(node, (ast.arguments, ast.arg)):
         continue
@@ -75,3 +77,21 @@ class TestUmarked(unittest.TestCase):
 
     self.assertIsNotNone(atok._tokens)
     self.assertTrue(has_tokens)
+
+  def test_init_tokens_astroid_errors(self):
+    builder = astroid.builder.AstroidBuilder()
+    tree = builder.string_build(source)
+    with self.assertRaises(NotImplementedError):
+      ASTTokens(source, tree=tree, init_tokens=False)
+
+    atok = ASTTokens(source, tree=tree)
+    with self.assertRaises(NotImplementedError):
+      atok.get_text(tree, unmarked=True)
+
+
+@unittest.skipIf(supports_unmarked(), "Python version *does* support unmarked nodes")
+class TestNotSupportingUnmarked(unittest.TestCase):
+  def test_unmarked_version_error(self):
+    atok = ASTTokens('foo', parse=True)
+    with self.assertRaises(NotImplementedError):
+      atok.get_text(atok.tree, unmarked=True)
