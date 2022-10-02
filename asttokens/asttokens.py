@@ -238,7 +238,7 @@ class ASTTokens(object):
     """
     in_f_string = getattr(node, "_in_f_string", False)
     if unmarked or (
-        (not self._tokens or in_f_string)
+        (not self._tokens or in_f_string or isinstance(node, (ast.alias)))
         and supports_unmarked(node)
     ):
       return self._get_text_positions_unmarked(node, padded)

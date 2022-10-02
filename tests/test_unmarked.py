@@ -6,13 +6,19 @@ from asttokens import asttokens, supports_unmarked
 source = """
 x = 1
 if x > 0:
-  def foo(bar):
-    pass
-
   for i in range(10):
     print(i)
 else:
-  print(f"{x + 2} is negative {1.23:.2f} {'a':!r} {x =}")
+  print('negative')
+
+def foo(bar):
+  pass
+
+print(f"{x + 2} is negative {1.23:.2f} {'a':!r} {x =}")
+
+import a
+import b as c, d.e as f
+from foo.bar import baz as spam
 """
 
 
@@ -68,3 +74,4 @@ class TestUmarked(unittest.TestCase):
           getattr(atok, 'tokens')
 
     self.assertIsNotNone(atok._tokens)
+    self.assertTrue(has_tokens)
