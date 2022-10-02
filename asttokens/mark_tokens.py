@@ -358,12 +358,27 @@ class MarkTokens(object):
                       last_token,  # type: util.Token
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
-    if isinstance(node, ast.AST) and supports_unmarked():
-      # Mark all descendants of f-strings as being in an f-string.
-      # This tells get_text_positions to continue using the unmarked method,
-      # as the token-using method doesn't work for f-strings.
-      for child in ast.walk(node):
-        child._in_f_string = True  # type: ignore
+    assert sys.version_info[:2] >= (3, 6)  # for mypy
+
+    if isinstance(node, ast.JoinedStr):  # i.e. not astroid
+      # f-strings are complicated.
+      # The whole thing is one token, so token-using methods don't work correctly.
+      # Regular nodes inside formatted values need to be marked with _dont_use_tokens
+      # to indicate that the unmarked implementation should always be used.
+      # In addition, some child nodes have incorrect positions that correspond to the whole f-string.
+      # This means that ast.get_source_segment also does the wrong thing for them.
+      # We mark these with _broken_positions to indicate that an empty text range should be returned.
+      assert isinstance(node, ast.JoinedStr)
+      for part in node.values:
+        if isinstance(part, ast.Constant):  # static text part between formatted values
+          part._broken_positions = True  # type: ignore
+        else:
+          assert isinstance(part, ast.FormattedValue)
+          for child in ast.walk(part.value):
+            child._dont_use_tokens = True  # type: ignore
+          if part.format_spec:  # this is another JoinedStr
+            part.format_spec._broken_positions = True  # type: ignore
+
     return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):

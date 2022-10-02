@@ -260,14 +260,17 @@ class ASTTokens(object):
     This is not recommended for external use as it may raise errors or return incorrect results
     for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
     """
-    in_f_string = getattr(node, "_in_f_string", False)
+    if getattr(node, "_broken_positions", None):
+      return (1, 0), (1, 0)
+
+    node_dont_use_tokens = getattr(node, "_dont_use_tokens", None)
     # Always use the unmarked method when unmarked=True.
     if unmarked or (
         # For nodes that work with the unmarked method, prefer it if either:
         # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
         # 2. The node is better handled by the unmarked method. This applies to import aliases
         #    and nodes within f-strings.
-        (not self._tokens or in_f_string or isinstance(node, (ast.alias)))
+        (not self._tokens or node_dont_use_tokens or isinstance(node, (ast.alias)))
         and supports_unmarked(node)
     ):
       return self._get_text_positions_unmarked(node, padded)

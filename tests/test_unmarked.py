@@ -16,12 +16,21 @@ else:
 def foo(bar):
   pass
 
-print(f"{x + 2} is negative {1.23:.2f} {'a':!r} {x =}")
+print(f"{x + 2} is negative {1.23:.2f} {'a'!r} {x =}")
 
 import a
 import b as c, d.e as f
 from foo.bar import baz as spam
 """
+
+
+def is_fstring_format_spec(node):
+  return (
+      isinstance(node, ast.JoinedStr)
+      and len(node.values) == 1
+      and isinstance(node.values[0], ast.Constant)
+      and node.values[0].value in ['.2f']
+  )
 
 
 @unittest.skipUnless(supports_unmarked(), "Python version does not support unmarked nodes")
@@ -61,7 +70,13 @@ class TestUmarked(unittest.TestCase):
       atok_text = atok.get_text(node, padded=True)
       ast_text = ast.get_source_segment(source, node, padded=True)
       if ast_text:
-        self.assertEqual(atok_text, ast_text, node)
+        if (
+            ast_text.startswith("f") and isinstance(node, (ast.Constant, ast.FormattedValue))
+            or is_fstring_format_spec(node)
+        ):
+          self.assertEqual(atok_text, "", node)
+        else:
+          self.assertEqual(atok_text, ast_text, node)
 
       if isinstance(node, ast.arguments):
         has_tokens = True
