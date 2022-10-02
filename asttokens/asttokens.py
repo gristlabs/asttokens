@@ -299,7 +299,7 @@ class ASTTokens(object):
     if sys.version_info[:2] < (3, 8) or not supports_unmarked():
       raise NotImplementedError('Python version not supported')
 
-    if not isinstance(node, ast.AST):
+    if not isinstance(node, (ast.AST, type(None))):
       raise NotImplementedError('Not supported for astroid')
 
     if isinstance(node, ast.Module):
