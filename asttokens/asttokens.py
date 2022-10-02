@@ -383,6 +383,13 @@ if sys.version_info[:2] >= (3, 8):
 
 def supports_unmarked(node=None):
   # type: (Any) -> bool
+  """
+  Returns True if the Python version and the node (if given)
+  are supported by the ``get_text*`` methods with the ``unmarked=True`` argument,
+  so that ``init_tokens=False`` can be used.
+  If this returns False, then those methods may either raise an error
+  or return incorrect results.
+  """
   return (
       isinstance(node, (ast.AST, type(None)))
       and not isinstance(node, _unsupported_unmarked_types)
