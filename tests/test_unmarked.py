@@ -26,7 +26,7 @@ from foo.bar import baz as spam
 """
 
 fstring_node_dumps = [
-  ast.dump(ast.parse(s).body[0].value)
+  ast.dump(ast.parse(s).body[0].value)  # type: ignore
   for s in ["xx", "yy", "aa", "bb", "xx + 22", "22", "1.23", "'a'"]
 ]
 
