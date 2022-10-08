@@ -435,6 +435,7 @@ if sys.version_info[:2] >= (3, 8):
             annotate_fstring_nodes(part.format_spec)
 else:
   def fstring_positions_work():
+    # type: () -> bool
     return False
 
   def annotate_fstring_nodes(_tree):
