@@ -22,7 +22,7 @@ from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 import six
 
 from . import util
-from .asttokens import ASTTokens, supports_unmarked
+from .asttokens import ASTTokens
 from .util import AstConstant
 
 try:
@@ -358,30 +358,6 @@ class MarkTokens(object):
                       last_token,  # type: util.Token
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
-    if sys.version_info[:2] < (3, 6):
-      raise AssertionError  # for mypy
-
-    if isinstance(node, ast.JoinedStr):  # i.e. not astroid
-      # f-strings are complicated.
-      # The whole thing is one token, so token-using methods don't work correctly.
-      # Regular nodes inside formatted values need to be marked with _dont_use_tokens
-      # to indicate that the unmarked implementation should always be used.
-      # In addition, some child nodes have incorrect positions that correspond to the whole f-string.
-      # This means that ast.get_source_segment also does the wrong thing for them.
-      # We mark these with _broken_positions to indicate that an empty text range should be returned.
-      assert isinstance(node, ast.JoinedStr)
-      for part in node.values:
-        setattr(part, '_broken_positions', True)  # use setattr for mypy
-        if isinstance(part, ast.FormattedValue):
-          for child in ast.walk(part.value):
-            setattr(child, '_dont_use_tokens', True)
-          if part.format_spec:  # this is another JoinedStr
-            setattr(part.format_spec, '_broken_positions', True)
-            # Recursively handle this inner JoinedStr in the same way.
-            # While this is usually automatic for other nodes,
-            # the children of f-strings are explicitly excluded in iter_children_ast.
-            self.visit_joinedstr(part.format_spec, first_token, last_token)
-
     return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):

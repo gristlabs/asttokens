@@ -25,7 +25,7 @@ import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from .line_numbers import LineNumbers
-from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt
+from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, annotate_fstring_nodes
 
 if TYPE_CHECKING:
   from .util import AstNode
@@ -67,6 +67,8 @@ class ASTTokens(object):
 
     self._filename = filename
     self._tree = ast.parse(source_text, filename) if parse else tree
+    if self._tree is not None:
+      annotate_fstring_nodes(self._tree)
 
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,

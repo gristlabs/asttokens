@@ -106,7 +106,7 @@ else:
 
 
 def iter_children_func(node):
-  # type: (Module) -> Callable
+  # type: (AST) -> Callable
   """
   Returns a function which yields all direct children of a AST node,
   skipping children that are singleton nodes.
@@ -249,7 +249,7 @@ def visit_tree(node, previsit, postvisit):
 
 
 def walk(node):
-  # type: (Module) -> Iterator[Union[Module, AstNode]]
+  # type: (AST) -> Iterator[Union[Module, AstNode]]
   """
   Recursively yield all descendant nodes in the tree starting at ``node`` (including ``node``
   itself), using depth-first pre-order traversal (yieling parents before their children).
@@ -376,3 +376,67 @@ def last_stmt(node):
   if child_stmts:
     return last_stmt(child_stmts[-1])
   return node
+
+
+if sys.version_info[:2] >= (3, 8):
+  from functools import lru_cache
+
+  @lru_cache(maxsize=None)
+  def fstring_positions_work():
+    # type: () -> bool
+    """
+    The positions attached to nodes inside f-string FormattedValues have some bugs
+    that were fixed in Python 3.9.7 in https://github.com/python/cpython/pull/27729.
+    This checks for those bugs more concretely without relying on the Python version.
+    Specifically this checks:
+     - Values with a format spec or conversion
+     - Repeated (i.e. identical-looking) expressions
+     - Multiline f-strings implicitly concatenated.
+    """
+    source = """(
+      f"a {b}{b} c {d!r} e {f:g} h {i:{j}} k {l:{m:n}}"
+      f"a {b}{b} c {d!r} e {f:g} h {i:{j}} k {l:{m:n}}"
+      f"{x + y + z} {x} {y} {z} {z} {z!a} {z:z}"
+    )"""
+    tree = ast.parse(source)
+    name_nodes = [node for node in ast.walk(tree) if isinstance(node, ast.Name)]
+    name_positions = [(node.lineno, node.col_offset) for node in name_nodes]
+    positions_are_unique = len(set(name_positions)) == len(name_positions)
+    correct_source_segments = all(
+      ast.get_source_segment(source, node) == node.id
+      for node in name_nodes
+    )
+    return positions_are_unique and correct_source_segments
+
+  def annotate_fstring_nodes(tree):
+    # type: (ast.AST) -> None
+    """
+    Add attributes to nodes inside f-strings:
+        _broken_positions if the positions cannot be trusted.
+        _dont_use_tokens if the positions work and thus should be used instead of tokens.
+    """
+    for joinedstr in walk(tree):
+      if not isinstance(joinedstr, ast.JoinedStr):
+        continue
+      for part in joinedstr.values:
+        # The ast positions of the FormattedValues/Constant nodes span the full f-string, which is weird.
+        setattr(part, '_broken_positions', True)  # use setattr for mypy
+
+        if isinstance(part, ast.FormattedValue):
+          for child in walk(part.value):
+            setattr(child, '_dont_use_tokens' if fstring_positions_work() else '_broken_positions', True)
+
+          if part.format_spec:  # this is another JoinedStr
+            # Again, the standard positions span the full f-string.
+            setattr(part.format_spec, '_broken_positions', True)
+            # Recursively handle this inner JoinedStr in the same way.
+            # While this is usually automatic for other nodes,
+            # the children of f-strings are explicitly excluded in iter_children_ast.
+            annotate_fstring_nodes(part.format_spec)
+else:
+  def fstring_positions_work():
+    return False
+
+  def annotate_fstring_nodes(_tree):
+    # type: (ast.AST) -> None
+    pass
