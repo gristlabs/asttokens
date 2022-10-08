@@ -140,4 +140,7 @@ class TestNotSupportingUnmarked(unittest.TestCase):
 
 class TestFstringPositionsWork(unittest.TestCase):
   def test_fstring_positions_work(self):
-    self.assertEqual(fstring_positions_work(), sys.version_info >= (3, 9, 7))
+    self.assertEqual(
+      fstring_positions_work() and supports_unmarked(),
+      sys.version_info >= (3, 9, 7),
+    )
