@@ -367,6 +367,8 @@ class ASTText(ASTTextBase, object):
     super(ASTText, self).__init__(source_text, filename)
 
     self._tree = tree
+    if self._tree is not None:
+      annotate_fstring_nodes(self._tree)
 
     self._asttokens = None  # type: Optional[ASTTokens]
 
@@ -375,6 +377,7 @@ class ASTText(ASTTextBase, object):
     # type: () -> Module
     if self._tree is None:
       self._tree = ast.parse(self._text, self._filename)
+      annotate_fstring_nodes(self._tree)
     return self._tree
 
   @property
@@ -402,6 +405,9 @@ class ASTText(ASTTextBase, object):
     Use ``unmarked=True`` to force the method to not use token information,
     however this will be preferred anyway for nodes where it is supported.
     """
+    if getattr(node, "_broken_positions", None):
+      return (1, 0), (1, 0)
+
     if unmarked or supports_unmarked(node):
       return self._get_text_positions_unmarked(node, padded)
 
