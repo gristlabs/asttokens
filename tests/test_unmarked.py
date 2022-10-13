@@ -118,7 +118,7 @@ class TestUmarked(unittest.TestCase):
             ),
           )
 
-  def test_init_tokens_astroid_errors(self):
+  def test_lazy_asttext_astroid_errors(self):
     builder = astroid.builder.AstroidBuilder()
     tree = builder.string_build(source)
     with self.assertRaises(NotImplementedError):

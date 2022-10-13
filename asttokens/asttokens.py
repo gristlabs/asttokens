@@ -323,7 +323,6 @@ class ASTText(ASTTextBase, object):
     """
     Unmarked version of ``get_text_positions()``.
 
-    Raises an error for unsupported Python versions, unlike ``init_tokens=False``.
     Raises an error for astroid tree.
     Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
     """
