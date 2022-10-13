@@ -31,7 +31,7 @@ class TestMarkTokens(unittest.TestCase):
 
   def create_mark_checker(self, source, verify=True):
     atok = self.create_asttokens(source)
-    checker = tools.MarkChecker(atok)
+    checker = tools.MarkChecker(atok, self.is_astroid_test)
 
     # The last token should always be an ENDMARKER
     # None of the nodes should contain that token
@@ -447,7 +447,7 @@ bar = ('x y z'   # comment2
       source = textwrap.dedent("""
         def foo(*, name: str):  # keyword-only argument with type annotation
           pass
-        
+
         f(*(x))  # ast.Starred with parentheses
       """)
       self.create_mark_checker(source)

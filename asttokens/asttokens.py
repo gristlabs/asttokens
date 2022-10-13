@@ -49,90 +49,33 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
     self._line_numbers = LineNumbers(source_text)
 
   @abc.abstractmethod
-  def get_text_positions(self, node, padded, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     raise NotImplementedError
 
-  def _get_text_positions_unmarked(self, node, padded):
-    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
-    """
-    Unmarked version of ``get_text_positions()``.
-
-    Raises an error for unsupported Python versions, unlike ``init_tokens=False``.
-    Raises an error for astroid tree.
-    Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
-    """
-    # supports_unmarked() already checks the Python version, but writing it this way
-    # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
-    if sys.version_info[:2] < (3, 8) or not supports_unmarked():
-      raise NotImplementedError('Python version not supported')
-
-    if not isinstance(node, (ast.AST, type(None))):
-      raise NotImplementedError('Not supported for astroid')
-
-    if isinstance(node, ast.Module):
-      # Modules don't have position info, so just return the range of the whole text.
-      # The token-using method does something different, but its behavior seems weird and inconsistent.
-      # For example, in a file with only comments, it only returns the first line.
-      # It's hard to imagine a case when this matters.
-      return (1, 0), self._line_numbers.offset_to_line(len(self._text))
-
-    if not hasattr(node, 'lineno'):
-      return (1, 0), (1, 0)
-
-    assert node  # tell mypy that node is not None, which we allowed up to here for compatibility
-
-    decorators = getattr(node, 'decorator_list', [])
-    if decorators:
-      # Function/Class definition nodes are marked by AST as starting at def/class,
-      # not the first decorator. This doesn't match the token-using behavior,
-      # or inspect.getsource(), and just seems weird.
-      start_node = decorators[0]
-    else:
-      start_node = node
-
-    if padded and last_stmt(node).lineno != node.lineno:
-      # Include leading indentation for multiline statements.
-      start_col_offset = 0
-    else:
-      start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
-
-    start = (start_node.lineno, start_col_offset)
-
-    # To match the token-using behaviour, we exclude trailing semicolons and comments.
-    # This means that for blocks containing multiple statements, we have to use the last one
-    # instead of the actual node for end_lineno and end_col_offset.
-    end_node = last_stmt(node)
-    end_lineno = cast(int, end_node.end_lineno)
-    end_col_offset = cast(int, end_node.end_col_offset)
-    end_col_offset = self._line_numbers.from_utf8_col(end_lineno, end_col_offset)
-    end = (end_lineno, end_col_offset)
-
-    return start, end
-
-  def get_text_range(self, node, padded=True, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[int, int]
+  def get_text_range(self, node, padded=True):
+    # type: (AstNode, bool) -> Tuple[int, int]
     """
     Returns the (startpos, endpos) positions in source text corresponding to the given node.
     Returns (0, 0) for nodes (like `Load`) that don't correspond to any particular text.
 
-    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
+    See ``get_text_positions()`` for details on the ``padded`` argument.
     """
-    start, end = self.get_text_positions(node, padded, unmarked)
+    start, end = self.get_text_positions(node, padded)
     return (
       self._line_numbers.line_to_offset(*start),
       self._line_numbers.line_to_offset(*end),
     )
 
-  def get_text(self, node, padded=True, unmarked=False):
-    # type: (AstNode, bool, bool) -> str
+  def get_text(self, node, padded=True):
+    # type: (AstNode, bool) -> str
     """
     Returns the text corresponding to the given node.
     Returns '' for nodes (like `Load`) that don't correspond to any particular text.
 
-    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
+    See ``get_text_positions()`` for details on the ``padded`` argument.
     """
-    start, end = self.get_text_range(node, padded, unmarked)
+    start, end = self.get_text_range(node, padded)
     return self._text[start : end]
 
 
@@ -313,8 +256,8 @@ class ASTTokens(ASTTextBase, object):
     """
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
-  def get_text_positions(self, node, padded, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
     If the positions can't be determined, or the nodes don't correspond to any particular text,
@@ -323,25 +266,9 @@ class ASTTokens(ASTTextBase, object):
     ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
-
-    Use ``unmarked=True`` to force the method to not use token information.
-    This is not recommended for external use as it may raise errors or return incorrect results
-    for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
     """
     if getattr(node, "_broken_positions", None):
       return (1, 0), (1, 0)
-
-    node_dont_use_tokens = getattr(node, "_dont_use_tokens", None)
-    # Always use the unmarked method when unmarked=True.
-    if unmarked or (
-        # For nodes that work with the unmarked method, prefer it if either:
-        # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
-        # 2. The node is better handled by the unmarked method. This applies to import aliases
-        #    and nodes within f-strings.
-        (node_dont_use_tokens or isinstance(node, (ast.alias)))
-        and supports_unmarked(node)
-    ):
-      return self._get_text_positions_unmarked(node, padded)
 
     if not hasattr(node, 'first_token'):
       return (1, 0), (1, 0)
@@ -391,8 +318,65 @@ class ASTText(ASTTextBase, object):
       )
     return self._asttokens
 
-  def get_text_positions(self, node, padded, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def _get_text_positions_unmarked(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    """
+    Unmarked version of ``get_text_positions()``.
+
+    Raises an error for unsupported Python versions, unlike ``init_tokens=False``.
+    Raises an error for astroid tree.
+    Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
+    """
+    # supports_unmarked() already checks the Python version, but writing it this way
+    # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
+    if sys.version_info[:2] < (3, 8) or not supports_unmarked():
+      raise NotImplementedError('Python version not supported')
+
+    if not isinstance(node, (ast.AST, type(None))):
+      raise NotImplementedError('Not supported for astroid')
+
+    if isinstance(node, ast.Module):
+      # Modules don't have position info, so just return the range of the whole text.
+      # The token-using method does something different, but its behavior seems weird and inconsistent.
+      # For example, in a file with only comments, it only returns the first line.
+      # It's hard to imagine a case when this matters.
+      return (1, 0), self._line_numbers.offset_to_line(len(self._text))
+
+    if not hasattr(node, 'lineno'):
+      return (1, 0), (1, 0)
+
+    assert node  # tell mypy that node is not None, which we allowed up to here for compatibility
+
+    decorators = getattr(node, 'decorator_list', [])
+    if decorators:
+      # Function/Class definition nodes are marked by AST as starting at def/class,
+      # not the first decorator. This doesn't match the token-using behavior,
+      # or inspect.getsource(), and just seems weird.
+      start_node = decorators[0]
+    else:
+      start_node = node
+
+    if padded and last_stmt(node).lineno != node.lineno:
+      # Include leading indentation for multiline statements.
+      start_col_offset = 0
+    else:
+      start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
+
+    start = (start_node.lineno, start_col_offset)
+
+    # To match the token-using behaviour, we exclude trailing semicolons and comments.
+    # This means that for blocks containing multiple statements, we have to use the last one
+    # instead of the actual node for end_lineno and end_col_offset.
+    end_node = last_stmt(node)
+    end_lineno = cast(int, end_node.end_lineno)
+    end_col_offset = cast(int, end_node.end_col_offset)
+    end_col_offset = self._line_numbers.from_utf8_col(end_lineno, end_col_offset)
+    end = (end_lineno, end_col_offset)
+
+    return start, end
+
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
     If the positions can't be determined, or the nodes don't correspond to any particular text,
@@ -401,17 +385,14 @@ class ASTText(ASTTextBase, object):
     ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
-
-    Use ``unmarked=True`` to force the method to not use token information,
-    however this will be preferred anyway for nodes where it is supported.
     """
     if getattr(node, "_broken_positions", None):
       return (1, 0), (1, 0)
 
-    if unmarked or supports_unmarked(node):
+    if supports_unmarked(node):
       return self._get_text_positions_unmarked(node, padded)
 
-    return self.asttokens.get_text_positions(node, padded, unmarked)
+    return self.asttokens.get_text_positions(node, padded)
 
 
 # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
@@ -433,11 +414,9 @@ if sys.version_info[:2] >= (3, 8):
 def supports_unmarked(node=None):
   # type: (Any) -> bool
   """
-  Returns True if the Python version and the node (if given)
-  are supported by the ``get_text*`` methods with the ``unmarked=True`` argument,
-  so that ``init_tokens=False`` can be used.
-  If this returns False, then those methods may either raise an error
-  or return incorrect results.
+  Returns True if the Python version and the node (if given) are supported by
+  the ``get_text*`` methods of ``ASTText`` without falling back to token
+  information.
   """
   return (
       isinstance(node, (ast.AST, type(None)))

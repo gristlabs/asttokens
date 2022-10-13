@@ -124,22 +124,6 @@ class TestUmarked(unittest.TestCase):
     with self.assertRaises(NotImplementedError):
       ASTText(source, tree)
 
-    atok = ASTTokens(source, tree=tree)
-    with self.assertRaises(NotImplementedError):
-      atok.get_text(tree, unmarked=True)
-
-
-@unittest.skipIf(supports_unmarked(), "Python version *does* support unmarked nodes")
-class TestNotSupportingUnmarked(unittest.TestCase):
-  def test_unmarked_version_error(self):
-    atok = ASTTokens('foo', parse=True)
-    with self.assertRaises(NotImplementedError):
-      atok.get_text(atok.tree, unmarked=True)
-
-    atext = ASTText('foo')
-    with self.assertRaises(NotImplementedError):
-      atext.get_text(atext.tree, unmarked=True)
-
 
 class TestFstringPositionsWork(unittest.TestCase):
   def test_fstring_positions_work(self):

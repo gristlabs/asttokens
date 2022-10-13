@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from asttokens import util, supports_unmarked
+from asttokens import util, supports_unmarked, ASTText
 
 
 def get_fixture_path(*path_parts):
@@ -36,9 +36,11 @@ class MarkChecker(object):
   """
   Helper tool to parse and mark an AST tree, with useful methods for verifying it.
   """
-  def __init__(self, atok):
+  def __init__(self, atok, is_astroid_test):
     self.atok = atok
     self.all_nodes = collect_nodes_preorder(self.atok.tree)
+    if not is_astroid_test:
+      self.atext = ASTText(atok.text, atok.tree, atok.filename)
 
   def get_nodes_at(self, line, col):
     """Returns all nodes that start with the token at the given position."""
@@ -128,11 +130,11 @@ class MarkChecker(object):
     if test_case.is_astroid_test or not supports_unmarked():
       return
 
-    text_unmarked = self.atok.get_text(node, unmarked=True)
+    text_unmarked = self.atext.get_text(node)
     if isinstance(node, ast.alias):
       self._check_alias_unmarked(node, test_case, text_unmarked)
     elif isinstance(node, ast.Module):
-      test_case.assertEqual(text_unmarked, self.atok._text)
+      test_case.assertEqual(text_unmarked, self.atext._text)
     elif supports_unmarked(node):
       has_lineno = hasattr(node, 'lineno')
       test_case.assertEqual(has_lineno, text_unmarked != '')
