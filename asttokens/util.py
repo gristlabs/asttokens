@@ -428,9 +428,8 @@ if sys.version_info[:2] >= (3, 8):
   def annotate_fstring_nodes(tree):
     # type: (ast.AST) -> None
     """
-    Add attributes to nodes inside f-strings:
-        _broken_positions if the positions cannot be trusted.
-        _dont_use_tokens if the positions work and thus should be used instead of tokens.
+    Add a special attribute `_broken_positions` to nodes inside f-strings
+    if the lineno/col_offset cannot be trusted.
     """
     for joinedstr in walk(tree):
       if not isinstance(joinedstr, ast.JoinedStr):
@@ -441,7 +440,8 @@ if sys.version_info[:2] >= (3, 8):
 
         if isinstance(part, ast.FormattedValue):
           for child in walk(part.value):
-            setattr(child, '_dont_use_tokens' if fstring_positions_work() else '_broken_positions', True)
+            if not fstring_positions_work():
+              setattr(child, '_broken_positions', True)
 
           if part.format_spec:  # this is another JoinedStr
             # Again, the standard positions span the full f-string.
