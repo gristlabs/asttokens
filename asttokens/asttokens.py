@@ -314,17 +314,17 @@ class ASTText(ASTTextBase, object):
       )
     return self._asttokens
 
-  def _get_text_positions_unmarked(self, node, padded):
+  def _get_text_positions_no_tokens(self, node, padded):
     # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    Unmarked version of ``get_text_positions()``.
+    Version of ``get_text_positions()`` that doesn't use tokens.
 
-    Raises an error for astroid tree.
+    Raises an error for astroid trees.
     Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
     """
-    # supports_unmarked() already checks the Python version, but writing it this way
+    # supports_no_tokens() already checks the Python version, but writing it this way
     # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
-    if sys.version_info[:2] < (3, 8) or not supports_unmarked():
+    if sys.version_info[:2] < (3, 8) or not supports_no_tokens():
       raise NotImplementedError('Python version not supported')
 
     if not isinstance(node, (ast.AST, type(None))):
@@ -384,29 +384,29 @@ class ASTText(ASTTextBase, object):
     if getattr(node, "_broken_positions", None):
       return (1, 0), (1, 0)
 
-    if supports_unmarked(node):
-      return self._get_text_positions_unmarked(node, padded)
+    if supports_no_tokens(node):
+      return self._get_text_positions_no_tokens(node, padded)
 
     return self.asttokens.get_text_positions(node, padded)
 
 
-# Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
-_unsupported_unmarked_types = ()  # type: Tuple[Type[ast.AST], ...]
+# Node types that _get_text_positions_no_tokens doesn't support. Only relevant for Python 3.8+.
+_unsupported_no_tokens_types = ()  # type: Tuple[Type[ast.AST], ...]
 if sys.version_info[:2] >= (3, 8):
-  _unsupported_unmarked_types += (
+  _unsupported_no_tokens_types += (
     # no lineno
     ast.arguments, ast.withitem,
   )
   if sys.version_info[:2] == (3, 8):
-    _unsupported_unmarked_types += (
-      # get_text_unmarked works incorrectly for these types due to bugs in Python 3.8.
+    _unsupported_no_tokens_types += (
+      # _get_text_positions_no_tokens works incorrectly for these types due to bugs in Python 3.8.
       ast.arg, ast.Starred,
       # no lineno in 3.8
       ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
     )
 
 
-def supports_unmarked(node=None):
+def supports_no_tokens(node=None):
   # type: (Any) -> bool
   """
   Returns True if the Python version and the node (if given) are supported by
@@ -415,7 +415,7 @@ def supports_unmarked(node=None):
   """
   return (
       isinstance(node, (ast.AST, type(None)))
-      and not isinstance(node, _unsupported_unmarked_types)
+      and not isinstance(node, _unsupported_no_tokens_types)
       and sys.version_info[:2] >= (3, 8)
       and 'pypy' not in sys.version.lower()
   )

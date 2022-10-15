@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from asttokens import util, supports_unmarked, ASTText
+from asttokens import util, supports_no_tokens, ASTText
 
 
 def get_fixture_path(*path_parts):
@@ -73,15 +73,15 @@ class MarkChecker(object):
     """
     test_case.longMessage = True
 
-    if supports_unmarked() and not test_case.is_astroid_test:
-      num_unmarked = sum(supports_unmarked(n) for n in self.all_nodes)
+    if supports_no_tokens() and not test_case.is_astroid_test:
+      num_supported = sum(supports_no_tokens(n) for n in self.all_nodes)
       num_nodes = len(self.all_nodes)
-      test_case.assertGreater(num_unmarked / num_nodes, 0.5, (num_unmarked, num_nodes))
+      test_case.assertGreater(num_supported / num_nodes, 0.5, (num_supported, num_nodes))
 
     tested_nodes = 0
     for node in self.all_nodes:
       text = self.atok.get_text(node)
-      self.check_get_text_unmarked(node, test_case, text)
+      self.check_get_text_no_tokens(node, test_case, text)
 
       if not (
           util.is_stmt(node) or
@@ -121,42 +121,42 @@ class MarkChecker(object):
 
     return tested_nodes
 
-  def check_get_text_unmarked(self, node, test_case, text):
+  def check_get_text_no_tokens(self, node, test_case, text):
     """
     Check that `text` (returned from get_text()) usually returns the same text
-    as get_text_unmarked.
+    whether from `ASTTokens` or `ASTText`.
     """
 
-    if test_case.is_astroid_test or not supports_unmarked():
+    if test_case.is_astroid_test or not supports_no_tokens():
       return
 
-    text_unmarked = self.atext.get_text(node)
+    text_no_tokens = self.atext.get_text(node)
     if isinstance(node, ast.alias):
-      self._check_alias_unmarked(node, test_case, text_unmarked)
+      self._check_alias_no_tokens(node, test_case, text_no_tokens)
     elif isinstance(node, ast.Module):
-      test_case.assertEqual(text_unmarked, self.atext._text)
-    elif supports_unmarked(node):
+      test_case.assertEqual(text_no_tokens, self.atext._text)
+    elif supports_no_tokens(node):
       has_lineno = hasattr(node, 'lineno')
-      test_case.assertEqual(has_lineno, text_unmarked != '')
+      test_case.assertEqual(has_lineno, text_no_tokens != '')
       if has_lineno:
-        test_case.assertEqual(text, text_unmarked, ast.dump(node))
+        test_case.assertEqual(text, text_no_tokens, ast.dump(node))
       else:
-        # get_text_unmarked can't work with nodes without lineno.
+        # _get_text_positions_no_tokens can't work with nodes without lineno.
         # Double-check that such nodes are unusual.
         test_case.assertFalse(util.is_stmt(node) or util.is_expr(node))
         with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
           test_case.parse_snippet(text, node)
 
-  def _check_alias_unmarked(self, node, test_case, text_unmarked):
+  def _check_alias_no_tokens(self, node, test_case, text):
     if sys.version_info < (3, 10):
       # Before 3.10, aliases don't have position information
-      test_case.assertEqual(text_unmarked, '')
-    # For 3.10+, the original get_text often returns the wrong value for aliases.
-    # So to verify get_text_unmarked, we instead check the general form.
+      test_case.assertEqual(text, '')
+    # For 3.10+, ASTTokens.get_text often returns the wrong value for aliases.
+    # So to verify ASTText.get_text, we instead check the general form.
     elif node.asname:
-      test_case.assertEqual(text_unmarked.split(), [node.name, 'as', node.asname])
+      test_case.assertEqual(text.split(), [node.name, 'as', node.asname])
     else:
-      test_case.assertEqual(text_unmarked, node.name)
+      test_case.assertEqual(text, node.name)
 
 
 def repr_tree(node):
