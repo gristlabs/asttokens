@@ -322,7 +322,8 @@ class ASTText(ASTTextBase, object):
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
     """
-    assert sys.version_info[:2] >= (3, 8)
+    if sys.version_info[:2] < (3, 8):
+      raise RuntimeError
 
     if isinstance(node, ast.Module):
       # Modules don't have position info, so just return the range of the whole text.
