@@ -54,7 +54,7 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
     If the positions can't be determined, or the nodes don't correspond to any particular text,
     returns ``(1, 0)`` for both.
 
-    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    ``padded`` corresponds to the ``padded`` argument to ``ast.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
     """
@@ -267,7 +267,7 @@ class ASTTokens(ASTTextBase, object):
     If the positions can't be determined, or the nodes don't correspond to any particular text,
     returns ``(1, 0)`` for both.
 
-    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    ``padded`` corresponds to the ``padded`` argument to ``ast.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
     """
@@ -385,7 +385,7 @@ class ASTText(ASTTextBase, object):
     If the positions can't be determined, or the nodes don't correspond to any particular text,
     returns ``(1, 0)`` for both.
 
-    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    ``padded`` corresponds to the ``padded`` argument to ``ast.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
     """
