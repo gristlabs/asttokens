@@ -4,7 +4,7 @@ import unittest
 
 import astroid
 
-from asttokens import ASTText, ASTTokens, supports_no_tokens
+from asttokens import ASTText, supports_no_tokens
 from asttokens.util import fstring_positions_work
 
 source = """

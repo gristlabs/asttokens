@@ -18,7 +18,7 @@ import bisect
 import sys
 import token
 from ast import Module
-from typing import Callable, Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
+from typing import Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -74,7 +74,7 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
     See ``get_text_positions()`` for details on the ``padded`` argument.
     """
     start, end = self.get_text_range(node, padded)
-    return self._text[start : end]
+    return self._text[start: end]
 
 
 class ASTTokens(ASTTextBase, object):
