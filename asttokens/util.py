@@ -14,16 +14,17 @@
 
 import ast
 import collections
+import io
 import sys
 import token
 import tokenize
 from abc import ABCMeta
 from ast import Module, expr, AST
-from typing import Callable, Dict, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
 from six import iteritems
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
   from astroid.node_classes import NodeNG
 
   # Type class used to expand out the definition of AST to include fields added by this library
@@ -35,6 +36,11 @@ if TYPE_CHECKING:
     lineno = 0  # type: int
 
   AstNode = Union[EnhancedAST, NodeNG]
+
+  if sys.version_info[0] == 2:
+    TokenInfo = Tuple[int, str, Tuple[int, int], Tuple[int, int], str]
+  else:
+    TokenInfo = tokenize.TokenInfo
 
 
 def token_repr(tok_type, string):
@@ -103,6 +109,17 @@ else:
     These are considered non-coding tokens, as they don't affect the syntax tree.
     """
     return token_type >= token.N_TOKENS
+
+
+def generate_tokens(text):
+  # type: (str) -> Iterator[TokenInfo]
+  """
+  Generates standard library tokens for the given code.
+  """
+  # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
+  # Python2. See http://stackoverflow.com/a/4952291/328565.
+  # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
+  return tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
 
 
 def iter_children_func(node):
@@ -320,11 +337,11 @@ if sys.version_info[0] == 2:
   # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
   # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
   def patched_generate_tokens(original_tokens):
-    # type: (Any) -> Any
-    return original_tokens
+    # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
+    return iter(original_tokens)
 else:
   def patched_generate_tokens(original_tokens):
-    # type: (Iterator[tokenize.TokenInfo]) -> Iterator[tokenize.TokenInfo]
+    # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
     """
     Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
     Workaround for https://github.com/python/cpython/issues/68382.
