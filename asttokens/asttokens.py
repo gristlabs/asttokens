@@ -114,8 +114,6 @@ class ASTTokens(ASTTextBase, object):
     super(ASTTokens, self).__init__(source_text, filename)
 
     self._tree = ast.parse(source_text, filename) if parse else tree
-    if self._tree is not None:
-      annotate_fstring_nodes(self._tree)
 
     # Tokenize the code.
     if tokens is None:
