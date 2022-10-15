@@ -271,9 +271,6 @@ class ASTTokens(ASTTextBase, object):
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
     """
-    if getattr(node, "_broken_positions", None):
-      return (1, 0), (1, 0)
-
     if not hasattr(node, 'first_token'):
       return (1, 0), (1, 0)
 
