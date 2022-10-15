@@ -49,6 +49,15 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
   @abc.abstractmethod
   def get_text_positions(self, node, padded):
     # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    """
+    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
+    If the positions can't be determined, or the nodes don't correspond to any particular text,
+    returns ``(1, 0)`` for both.
+
+    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    This means that if ``padded`` is True, the start position will be adjusted to include
+    leading whitespace if ``node`` is a multiline statement.
+    """
     raise NotImplementedError
 
   def get_text_range(self, node, padded=True):
