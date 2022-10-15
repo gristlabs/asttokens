@@ -318,20 +318,11 @@ class ASTText(ASTTextBase, object):
     return self._asttokens
 
   def _get_text_positions_no_tokens(self, node, padded):
-    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    # type: (ast.AST, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
-
-    Raises an error for astroid trees.
-    Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
     """
-    # supports_no_tokens() already checks the Python version, but writing it this way
-    # also tells mypy about the version. This prevents errors below with end_lineno and end_col_offset.
-    if sys.version_info[:2] < (3, 8) or not supports_no_tokens():
-      raise NotImplementedError('Python version not supported')
-
-    if not isinstance(node, (ast.AST, type(None))):
-      raise NotImplementedError('Not supported for astroid')
+    assert sys.version_info[:2] >= (3, 8)
 
     if isinstance(node, ast.Module):
       # Modules don't have position info, so just return the range of the whole text.
