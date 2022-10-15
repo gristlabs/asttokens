@@ -9,10 +9,9 @@ from .context import asttokens
 
 class TestASTTokens(unittest.TestCase):
 
-  def test_tokenizing(self):
-    # Test that we produce meaningful tokens on initialization.
+  def assertTokenizing(self, generate_tokens):
     source = "import re  # comment\n\nfoo = 'bar'\n"
-    atok = asttokens.ASTTokens(source)
+    atok = asttokens.ASTTokens(source, tokens=generate_tokens(source))
     self.assertEqual(atok.text, source)
     self.assertEqual([str(t) for t in atok.tokens], [
       "NAME:'import'",
@@ -32,6 +31,28 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(atok.tokens[5].index, 5)
     self.assertEqual(atok.tokens[5].startpos, 22)
     self.assertEqual(atok.tokens[5].endpos, 25)
+
+  def test_tokenizing(self):
+    # Test that we produce meaningful tokens on initialization.
+    self.assertTokenizing(generate_tokens=lambda x: None)
+
+  def test_given_existing_tokens(self):
+    # type: () -> None
+    # Test that we process a give list of tokens on initialization.
+
+    self.was_called = False
+
+    def generate_tokens(source):
+      def tokens_iter():
+        # force nonlocal into scope
+        for token in asttokens.util.generate_tokens(source):
+          yield token
+        self.was_called = True
+      return tokens_iter()
+
+    self.assertTokenizing(generate_tokens)
+
+    self.assertTrue(self.was_called, "Should have used tokens from given iterable")
 
 
   def test_token_methods(self):

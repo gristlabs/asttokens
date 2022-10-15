@@ -15,21 +15,19 @@
 import abc
 import ast
 import bisect
-import io
 import sys
 import token
-import tokenize
 from ast import Module
-from typing import Callable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
+from typing import Callable, Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from .line_numbers import LineNumbers
-from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, annotate_fstring_nodes
+from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, annotate_fstring_nodes, generate_tokens
 
-if TYPE_CHECKING:
-  from .util import AstNode
+if TYPE_CHECKING:  # pragma: no cover
+  from .util import AstNode, TokenInfo
 
 
 class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
@@ -99,8 +97,8 @@ class ASTTokens(ASTTextBase, object):
   tree created separately.
   """
 
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
-    # type: (Any, bool, Optional[Module], str) -> None
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
+    # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
     # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
@@ -111,7 +109,9 @@ class ASTTokens(ASTTextBase, object):
       annotate_fstring_nodes(self._tree)
 
     # Tokenize the code.
-    self._tokens = list(self._generate_tokens(self._text))
+    if tokens is None:
+      tokens = generate_tokens(self._text)
+    self._tokens = list(self._translate_tokens(tokens))
 
     # Extract the start positions of all tokens, so that we can quickly map positions to tokens.
     self._token_offsets = [tok.startpos for tok in self._tokens]
@@ -131,15 +131,11 @@ class ASTTokens(ASTTextBase, object):
     from .mark_tokens import MarkTokens # to avoid import loops
     MarkTokens(self).visit_tree(root_node)
 
-  def _generate_tokens(self, text):
-    # type: (str) -> Iterator[Token]
+  def _translate_tokens(self, original_tokens):
+    # type: (Iterable[TokenInfo]) -> Iterator[Token]
     """
-    Generates tokens for the given code.
+    Translates the given standard library tokens into our own representation.
     """
-    # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
-    # Python2. See http://stackoverflow.com/a/4952291/328565.
-    # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
-    original_tokens = tokenize.generate_tokens(cast(Callable[[], str], io.StringIO(text).readline))
     for index, tok in enumerate(patched_generate_tokens(original_tokens)):
       tok_type, tok_str, start, end, line = tok
       yield Token(tok_type, tok_str, start, end, line, index,
