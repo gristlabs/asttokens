@@ -172,7 +172,6 @@ class ASTTokens(ASTTextBase, object):
     Returns the token containing the given character offset (0-based position in source text),
     or the preceeding token if the position is between tokens.
     """
-    assert self._token_offsets and self._tokens
     return self._tokens[bisect.bisect(self._token_offsets, offset) - 1]
 
   def get_token(self, lineno, col_offset):
