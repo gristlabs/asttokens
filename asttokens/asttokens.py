@@ -33,7 +33,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
   def __init__(self, source_text, filename):
     # type: (Any, str) -> None
-    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     self._filename = filename
@@ -99,7 +99,7 @@ class ASTTokens(ASTTextBase, object):
 
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
     # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
-    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     super(ASTTokens, self).__init__(source_text, filename)
@@ -280,7 +280,7 @@ class ASTTokens(ASTTextBase, object):
 class ASTText(ASTTextBase, object):
   def __init__(self, source_text, tree=None, filename='<unknown>'):
     # type: (Any, Optional[Module], str) -> None
-    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
     if not isinstance(tree, (ast.AST, type(None))):
