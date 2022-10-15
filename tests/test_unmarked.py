@@ -4,7 +4,7 @@ import unittest
 
 import astroid
 
-from asttokens import supports_unmarked, ASTTokens
+from asttokens import ASTText, ASTTokens, supports_unmarked
 from asttokens.util import fstring_positions_work
 
 source = """
@@ -63,14 +63,14 @@ def is_fstring_format_spec(node):
 @unittest.skipUnless(supports_unmarked(), "Python version does not support unmarked nodes")
 class TestUmarked(unittest.TestCase):
   def test_unmarked(self):
-    atok = ASTTokens(source, parse=True, init_tokens=False)
+    atok = ASTText(source)
 
     for node in ast.walk(atok.tree):
       if not isinstance(node, (ast.arguments, ast.arg)):
         self.check_node(atok, node)
         self.assertTrue(supports_unmarked(node), node)
 
-    self.assertIsNone(atok._tokens)
+    self.assertIsNone(atok._asttokens)
 
     has_tokens = False
     for node in ast.walk(atok.tree):
@@ -79,16 +79,15 @@ class TestUmarked(unittest.TestCase):
       if isinstance(node, ast.arguments):
         has_tokens = True
 
-      self.assertEqual(atok._tokens is not None, has_tokens)
-      self.assertEqual(atok._tokens is not None, has_tokens)
+      self.assertEqual(atok._asttokens is not None, has_tokens)
+      self.assertEqual(atok._asttokens is not None, has_tokens)
 
       if has_tokens:
-        getattr(atok, 'tokens')
+        getattr(atok, 'asttokens')
       else:
-        with self.assertRaises(AssertionError):
-          getattr(atok, 'tokens')
+        self.assertIsNone(atok._asttokens)
 
-    self.assertIsNotNone(atok._tokens)
+    self.assertIsNotNone(atok._asttokens)
     self.assertTrue(has_tokens)
 
   def check_node(self, atok, node):
@@ -119,23 +118,11 @@ class TestUmarked(unittest.TestCase):
             ),
           )
 
-  def test_init_tokens_astroid_errors(self):
+  def test_lazy_asttext_astroid_errors(self):
     builder = astroid.builder.AstroidBuilder()
     tree = builder.string_build(source)
     with self.assertRaises(NotImplementedError):
-      ASTTokens(source, tree=tree, init_tokens=False)
-
-    atok = ASTTokens(source, tree=tree)
-    with self.assertRaises(NotImplementedError):
-      atok.get_text(tree, unmarked=True)
-
-
-@unittest.skipIf(supports_unmarked(), "Python version *does* support unmarked nodes")
-class TestNotSupportingUnmarked(unittest.TestCase):
-  def test_unmarked_version_error(self):
-    atok = ASTTokens('foo', parse=True)
-    with self.assertRaises(NotImplementedError):
-      atok.get_text(atok.tree, unmarked=True)
+      ASTText(source, tree)
 
 
 class TestFstringPositionsWork(unittest.TestCase):

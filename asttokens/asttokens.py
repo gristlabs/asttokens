@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import abc
 import ast
 import bisect
 import io
@@ -31,7 +32,54 @@ if TYPE_CHECKING:
   from .util import AstNode
 
 
-class ASTTokens(object):
+class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
+  def __init__(self, source_text, filename):
+    # type: (Any, str) -> None
+    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    self._filename = filename
+
+    # Decode source after parsing to let Python 2 handle coding declarations.
+    # (If the encoding was not utf-8 compatible, then even if it parses correctly,
+    # we'll fail with a unicode error here.)
+    source_text = six.ensure_text(source_text)
+
+    self._text = source_text
+    self._line_numbers = LineNumbers(source_text)
+
+  @abc.abstractmethod
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    raise NotImplementedError
+
+  def get_text_range(self, node, padded=True):
+    # type: (AstNode, bool) -> Tuple[int, int]
+    """
+    Returns the (startpos, endpos) positions in source text corresponding to the given node.
+    Returns (0, 0) for nodes (like `Load`) that don't correspond to any particular text.
+
+    See ``get_text_positions()`` for details on the ``padded`` argument.
+    """
+    start, end = self.get_text_positions(node, padded)
+    return (
+      self._line_numbers.line_to_offset(*start),
+      self._line_numbers.line_to_offset(*end),
+    )
+
+  def get_text(self, node, padded=True):
+    # type: (AstNode, bool) -> str
+    """
+    Returns the text corresponding to the given node.
+    Returns '' for nodes (like `Load`) that don't correspond to any particular text.
+
+    See ``get_text_positions()`` for details on the ``padded`` argument.
+    """
+    start, end = self.get_text_range(node, padded)
+    return self._text[start : end]
+
+
+class ASTTokens(ASTTextBase, object):
   """
   ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
   as tokens, and is used to mark and access token and position information.
@@ -49,53 +97,18 @@ class ASTTokens(object):
 
   If only ``source_text`` is given, you may use ``.mark_tokens(tree)`` to mark the nodes of an AST
   tree created separately.
-
-  If ``init_tokens`` is False, the text will not be tokenized and the nodes won't be marked.
-  This can save significant CPU time. In this case token-specific methods such as ``.get_token``
-  will raise an error, but position-related methods such as ``.get_text(node)`` will still work.
-  You can still call ``.init_tokens()`` later to tokenize the text and mark the nodes.
-  ``init_tokens=False`` will be ignored for Python < 3.8 or PyPy.
-  It will raise an error if ``tree`` is an astroid tree.
-  Finally, note that methods such as ``.get_text(node)`` may still automatically call ``.init_tokens()``
-  for specific unusual types of node that aren't supported.
   """
 
-  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', init_tokens=True):
-    # type: (Any, bool, Optional[Module], str, bool) -> None
+  def __init__(self, source_text, parse=False, tree=None, filename='<unknown>'):
+    # type: (Any, bool, Optional[Module], str) -> None
     # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 
-    self._filename = filename
+    super(ASTTokens, self).__init__(source_text, filename)
+
     self._tree = ast.parse(source_text, filename) if parse else tree
     if self._tree is not None:
       annotate_fstring_nodes(self._tree)
-
-    # Decode source after parsing to let Python 2 handle coding declarations.
-    # (If the encoding was not utf-8 compatible, then even if it parses correctly,
-    # we'll fail with a unicode error here.)
-    source_text = six.ensure_text(source_text)
-
-    self._text = source_text
-    self._line_numbers = LineNumbers(source_text)
-
-    self._tokens = None  # type: Optional[List[Token]]
-    self._token_offsets = None  # type: Optional[List[int]]
-
-    if not init_tokens and not isinstance(self._tree, (ast.AST, type(None))):
-      raise NotImplementedError('init_tokens=False is only supported for AST trees')
-
-    if init_tokens or not supports_unmarked(self._tree):
-      self.init_tokens()
-
-  def init_tokens(self):
-    # type: () -> None
-    """
-    Tokenizes the source text and marks the AST tree with token information.
-    Only needed if ``init_tokens=False`` was passed to the constructor.
-    Only needs to be called once, repeated calls are ignored.
-    """
-    if self._tokens is not None:
-      return
 
     # Tokenize the code.
     self._tokens = list(self._generate_tokens(self._text))
@@ -143,7 +156,6 @@ class ASTTokens(object):
   def tokens(self):
     # type: () -> List[Token]
     """The list of tokens corresponding to the source code from the constructor."""
-    assert self._tokens
     return self._tokens
 
   @property
@@ -192,7 +204,6 @@ class ASTTokens(object):
     tokens from the tokenize module, such as NL and COMMENT.
     """
     i = tok.index + 1
-    assert self._tokens
     if not include_extra:
       while is_non_coding_token(self._tokens[i].type):
         i += 1
@@ -205,7 +216,6 @@ class ASTTokens(object):
     tokens from the tokenize module, such as NL and COMMENT.
     """
     i = tok.index - 1
-    assert self._tokens
     if not include_extra:
       while is_non_coding_token(self._tokens[i].type):
         i -= 1
@@ -234,7 +244,6 @@ class ASTTokens(object):
     Yields all tokens in order from first_token through and including last_token. If
     include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
     """
-    assert self._tokens
     for i in xrange(first_token.index, last_token.index + 1):
       if include_extra or not is_non_coding_token(self._tokens[i].type):
         yield self._tokens[i]
@@ -247,8 +256,8 @@ class ASTTokens(object):
     """
     return self.token_range(node.first_token, node.last_token, include_extra=include_extra)
 
-  def get_text_positions(self, node, padded, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
     If the positions can't be determined, or the nodes don't correspond to any particular text,
@@ -257,27 +266,9 @@ class ASTTokens(object):
     ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
-
-    Use ``unmarked=True`` to force the method to not use token information.
-    This is not recommended for external use as it may raise errors or return incorrect results
-    for certain nodes. Prefer passing ``init_tokens=False`` to the constructor instead.
     """
     if getattr(node, "_broken_positions", None):
       return (1, 0), (1, 0)
-
-    node_dont_use_tokens = getattr(node, "_dont_use_tokens", None)
-    # Always use the unmarked method when unmarked=True.
-    if unmarked or (
-        # For nodes that work with the unmarked method, prefer it if either:
-        # 1. There are no tokens, i.e. `init_tokens=False` was passed to the constructor.
-        # 2. The node is better handled by the unmarked method. This applies to import aliases
-        #    and nodes within f-strings.
-        (not self._tokens or node_dont_use_tokens or isinstance(node, (ast.alias)))
-        and supports_unmarked(node)
-    ):
-      return self._get_text_positions_unmarked(node, padded)
-
-    self.init_tokens()
 
     if not hasattr(node, 'first_token'):
       return (1, 0), (1, 0)
@@ -290,12 +281,48 @@ class ASTTokens(object):
 
     return start, end
 
+
+class ASTText(ASTTextBase, object):
+  def __init__(self, source_text, tree=None, filename='<unknown>'):
+    # type: (Any, Optional[Module], str) -> None
+    # FIXME: Strictly, the type of source_type is one of the six string types, but hard to specify with mypy given
+    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+    if not isinstance(tree, (ast.AST, type(None))):
+      raise NotImplementedError('ASTText only supports AST trees')
+
+    super(ASTText, self).__init__(source_text, filename)
+
+    self._tree = tree
+    if self._tree is not None:
+      annotate_fstring_nodes(self._tree)
+
+    self._asttokens = None  # type: Optional[ASTTokens]
+
+  @property
+  def tree(self):
+    # type: () -> Module
+    if self._tree is None:
+      self._tree = ast.parse(self._text, self._filename)
+      annotate_fstring_nodes(self._tree)
+    return self._tree
+
+  @property
+  def asttokens(self):
+    # type: () -> ASTTokens
+    if self._asttokens is None:
+      self._asttokens = ASTTokens(
+          self._text,
+          tree=self.tree,
+          filename=self._filename,
+      )
+    return self._asttokens
+
   def _get_text_positions_unmarked(self, node, padded):
     # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Unmarked version of ``get_text_positions()``.
 
-    Raises an error for unsupported Python versions, unlike ``init_tokens=False``.
     Raises an error for astroid tree.
     Doesn't raise an error for unsupported types of AST node, but may return incorrect results.
     """
@@ -347,30 +374,24 @@ class ASTTokens(object):
 
     return start, end
 
-  def get_text_range(self, node, padded=True, unmarked=False):
-    # type: (AstNode, bool, bool) -> Tuple[int, int]
+  def get_text_positions(self, node, padded):
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
-    Returns the (startpos, endpos) positions in source text corresponding to the given node.
-    Returns (0, 0) for nodes (like `Load`) that don't correspond to any particular text.
+    Returns two ``(lineno, col_offset)`` tuples for the start and end of the given node.
+    If the positions can't be determined, or the nodes don't correspond to any particular text,
+    returns ``(1, 0)`` for both.
 
-    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
+    ``padded`` corresponds to the ``padded`` argument to ``astunparse.get_source_segment()``.
+    This means that if ``padded`` is True, the start position will be adjusted to include
+    leading whitespace if ``node`` is a multiline statement.
     """
-    start, end = self.get_text_positions(node, padded, unmarked)
-    return (
-      self._line_numbers.line_to_offset(*start),
-      self._line_numbers.line_to_offset(*end),
-    )
+    if getattr(node, "_broken_positions", None):
+      return (1, 0), (1, 0)
 
-  def get_text(self, node, padded=True, unmarked=False):
-    # type: (AstNode, bool, bool) -> str
-    """
-    Returns the text corresponding to the given node.
-    Returns '' for nodes (like `Load`) that don't correspond to any particular text.
+    if supports_unmarked(node):
+      return self._get_text_positions_unmarked(node, padded)
 
-    See ``get_text_positions()`` for details on the ``padded`` and ``unmarked`` arguments.
-    """
-    start, end = self.get_text_range(node, padded, unmarked)
-    return self._text[start : end]
+    return self.asttokens.get_text_positions(node, padded)
 
 
 # Node types that check_get_text_unmarked should ignore. Only relevant for Python 3.8+.
@@ -392,11 +413,9 @@ if sys.version_info[:2] >= (3, 8):
 def supports_unmarked(node=None):
   # type: (Any) -> bool
   """
-  Returns True if the Python version and the node (if given)
-  are supported by the ``get_text*`` methods with the ``unmarked=True`` argument,
-  so that ``init_tokens=False`` can be used.
-  If this returns False, then those methods may either raise an error
-  or return incorrect results.
+  Returns True if the Python version and the node (if given) are supported by
+  the ``get_text*`` methods of ``ASTText`` without falling back to token
+  information.
   """
   return (
       isinstance(node, (ast.AST, type(None)))
