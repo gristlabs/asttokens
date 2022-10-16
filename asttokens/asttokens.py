@@ -282,6 +282,20 @@ class ASTTokens(ASTTextBase, object):
 
 
 class ASTText(ASTTextBase, object):
+  """
+  Supports the same ``get_text*`` methods as ``ASTTokens``,
+  but uses the AST to determine the text positions instead of tokens.
+  This is faster than ``ASTTokens`` as it requires less setup work.
+
+  It also (sometimes) supports nodes inside f-strings, which ``ASTTokens`` doesn't.
+
+  Astroid trees are not supported at all and will raise an error.
+
+  Some node types and/or Python versions are not supported.
+  In these cases the ``get_text*`` methods will fall back to using ``ASTTokens``
+  which incurs the usual setup cost the first time.
+  If you want to avoid this, check ``supports_tokenless(node)`` before calling ``get_text*`` methods.
+  """
   def __init__(self, source_text, tree=None, filename='<unknown>'):
     # type: (Any, Optional[Module], str) -> None
     # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
@@ -317,7 +331,7 @@ class ASTText(ASTTextBase, object):
       )
     return self._asttokens
 
-  def _get_text_positions_no_tokens(self, node, padded):
+  def _get_text_positions_tokenless(self, node, padded):
     # type: (ast.AST, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
@@ -379,38 +393,52 @@ class ASTText(ASTTextBase, object):
     if getattr(node, "_broken_positions", None):
       return (1, 0), (1, 0)
 
-    if supports_no_tokens(node):
-      return self._get_text_positions_no_tokens(node, padded)
+    if supports_tokenless(node):
+      return self._get_text_positions_tokenless(node, padded)
 
     return self.asttokens.get_text_positions(node, padded)
 
 
-# Node types that _get_text_positions_no_tokens doesn't support. Only relevant for Python 3.8+.
-_unsupported_no_tokens_types = ()  # type: Tuple[Type[ast.AST], ...]
+# Node types that _get_text_positions_tokenless doesn't support. Only relevant for Python 3.8+.
+_unsupported_tokenless_types = ()  # type: Tuple[Type[ast.AST], ...]
 if sys.version_info[:2] >= (3, 8):
-  _unsupported_no_tokens_types += (
+  _unsupported_tokenless_types += (
     # no lineno
     ast.arguments, ast.withitem,
   )
   if sys.version_info[:2] == (3, 8):
-    _unsupported_no_tokens_types += (
-      # _get_text_positions_no_tokens works incorrectly for these types due to bugs in Python 3.8.
+    _unsupported_tokenless_types += (
+      # _get_text_positions_tokenless works incorrectly for these types due to bugs in Python 3.8.
       ast.arg, ast.Starred,
       # no lineno in 3.8
       ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
     )
 
 
-def supports_no_tokens(node=None):
+def supports_tokenless(node=None):
   # type: (Any) -> bool
   """
   Returns True if the Python version and the node (if given) are supported by
-  the ``get_text*`` methods of ``ASTText`` without falling back to token
-  information.
+  the ``get_text*`` methods of ``ASTText`` without falling back to ``ASTTokens``.
+  See ``ASTText`` for why this matters.
+
+  The following cases are not supported:
+
+    - Python 3.7 and earlier
+    - PyPy
+    - Astroid nodes (``get_text*`` methods of ``ASTText`` will raise an error)
+    - ``ast.arguments`` and ``ast.withitem``
+    - The following nodes in Python 3.8 only:
+      - ``ast.arg``
+      - ``ast.Starred``
+      - ``ast.Slice``
+      - ``ast.ExtSlice``
+      - ``ast.Index``
+      - ``ast.keyword``
   """
   return (
       isinstance(node, (ast.AST, type(None)))
-      and not isinstance(node, _unsupported_no_tokens_types)
+      and not isinstance(node, _unsupported_tokenless_types)
       and sys.version_info[:2] >= (3, 8)
       and 'pypy' not in sys.version.lower()
   )

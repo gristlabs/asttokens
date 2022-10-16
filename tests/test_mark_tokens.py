@@ -442,8 +442,8 @@ bar = ('x y z'   # comment2
     self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
 
   if not six.PY2:
-    def test_bad_no_tokens_types(self):
-      # Cases where _get_text_positions_no_tokens is incorrect in 3.8.
+    def test_bad_tokenless_types(self):
+      # Cases where _get_text_positions_tokenless is incorrect in 3.8.
       source = textwrap.dedent("""
         def foo(*, name: str):  # keyword-only argument with type annotation
           pass

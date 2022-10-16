@@ -6,7 +6,7 @@ import os
 import re
 import sys
 
-from asttokens import util, supports_no_tokens, ASTText
+from asttokens import util, supports_tokenless, ASTText
 
 
 def get_fixture_path(*path_parts):
@@ -73,15 +73,15 @@ class MarkChecker(object):
     """
     test_case.longMessage = True
 
-    if supports_no_tokens() and not test_case.is_astroid_test:
-      num_supported = sum(supports_no_tokens(n) for n in self.all_nodes)
+    if supports_tokenless() and not test_case.is_astroid_test:
+      num_supported = sum(supports_tokenless(n) for n in self.all_nodes)
       num_nodes = len(self.all_nodes)
       test_case.assertGreater(num_supported / num_nodes, 0.5, (num_supported, num_nodes))
 
     tested_nodes = 0
     for node in self.all_nodes:
       text = self.atok.get_text(node)
-      self.check_get_text_no_tokens(node, test_case, text)
+      self.check_get_text_tokenless(node, test_case, text)
 
       if not (
           util.is_stmt(node) or
@@ -121,33 +121,33 @@ class MarkChecker(object):
 
     return tested_nodes
 
-  def check_get_text_no_tokens(self, node, test_case, text):
+  def check_get_text_tokenless(self, node, test_case, text):
     """
     Check that `text` (returned from get_text()) usually returns the same text
     whether from `ASTTokens` or `ASTText`.
     """
 
-    if test_case.is_astroid_test or not supports_no_tokens():
+    if test_case.is_astroid_test or not supports_tokenless():
       return
 
-    text_no_tokens = self.atext.get_text(node)
+    text_tokenless = self.atext.get_text(node)
     if isinstance(node, ast.alias):
-      self._check_alias_no_tokens(node, test_case, text_no_tokens)
+      self._check_alias_tokenless(node, test_case, text_tokenless)
     elif isinstance(node, ast.Module):
-      test_case.assertEqual(text_no_tokens, self.atext._text)
-    elif supports_no_tokens(node):
+      test_case.assertEqual(text_tokenless, self.atext._text)
+    elif supports_tokenless(node):
       has_lineno = hasattr(node, 'lineno')
-      test_case.assertEqual(has_lineno, text_no_tokens != '')
+      test_case.assertEqual(has_lineno, text_tokenless != '')
       if has_lineno:
-        test_case.assertEqual(text, text_no_tokens, ast.dump(node))
+        test_case.assertEqual(text, text_tokenless, ast.dump(node))
       else:
-        # _get_text_positions_no_tokens can't work with nodes without lineno.
+        # _get_text_positions_tokenless can't work with nodes without lineno.
         # Double-check that such nodes are unusual.
         test_case.assertFalse(util.is_stmt(node) or util.is_expr(node))
         with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
           test_case.parse_snippet(text, node)
 
-  def _check_alias_no_tokens(self, node, test_case, text):
+  def _check_alias_tokenless(self, node, test_case, text):
     if sys.version_info < (3, 10):
       # Before 3.10, aliases don't have position information
       test_case.assertEqual(text, '')

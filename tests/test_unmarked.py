@@ -4,7 +4,7 @@ import unittest
 
 import astroid
 
-from asttokens import ASTText, supports_no_tokens
+from asttokens import ASTText, supports_tokenless
 from asttokens.util import fstring_positions_work
 
 source = """
@@ -60,15 +60,15 @@ def is_fstring_format_spec(node):
   )
 
 
-@unittest.skipUnless(supports_no_tokens(), "Python version does not support not using tokens")
+@unittest.skipUnless(supports_tokenless(), "Python version does not support not using tokens")
 class TestNoTokens(unittest.TestCase):
-  def test_get_text_no_tokens(self):
+  def test_get_text_tokenless(self):
     atok = ASTText(source)
 
     for node in ast.walk(atok.tree):
       if not isinstance(node, (ast.arguments, ast.arg)):
         self.check_node(atok, node)
-        self.assertTrue(supports_no_tokens(node), node)
+        self.assertTrue(supports_tokenless(node), node)
 
     self.assertIsNone(atok._asttokens)
 
@@ -128,6 +128,6 @@ class TestNoTokens(unittest.TestCase):
 class TestFstringPositionsWork(unittest.TestCase):
   def test_fstring_positions_work(self):
     self.assertEqual(
-      fstring_positions_work() and supports_no_tokens(),
+      fstring_positions_work() and supports_tokenless(),
       sys.version_info >= (3, 9, 7),
     )
