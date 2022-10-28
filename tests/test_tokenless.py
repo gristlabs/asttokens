@@ -61,7 +61,7 @@ def is_fstring_format_spec(node):
 
 
 @unittest.skipUnless(supports_tokenless(), "Python version does not support not using tokens")
-class TestNoTokens(unittest.TestCase):
+class TestTokenless(unittest.TestCase):
   def test_get_text_tokenless(self):
     atok = ASTText(source)
 
@@ -70,6 +70,7 @@ class TestNoTokens(unittest.TestCase):
         self.check_node(atok, node)
         self.assertTrue(supports_tokenless(node), node)
 
+    # Check that we didn't need to fall back to using tokens
     self.assertIsNone(atok._asttokens)
 
     has_tokens = False
@@ -80,13 +81,8 @@ class TestNoTokens(unittest.TestCase):
         has_tokens = True
 
       self.assertEqual(atok._asttokens is not None, has_tokens)
-      self.assertEqual(atok._asttokens is not None, has_tokens)
 
-      if has_tokens:
-        getattr(atok, 'asttokens')
-      else:
-        self.assertIsNone(atok._asttokens)
-
+    # Now we have started using tokens as fallback
     self.assertIsNotNone(atok._asttokens)
     self.assertTrue(has_tokens)
 

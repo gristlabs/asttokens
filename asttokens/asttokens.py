@@ -337,7 +337,7 @@ class ASTText(ASTTextBase, object):
     Version of ``get_text_positions()`` that doesn't use tokens.
     """
     if sys.version_info[:2] < (3, 8):
-      raise RuntimeError
+      raise AssertionError("This method should only be called internally after checking supports_tokenless()")
 
     if isinstance(node, ast.Module):
       # Modules don't have position info, so just return the range of the whole text.
@@ -391,6 +391,7 @@ class ASTText(ASTTextBase, object):
     leading whitespace if ``node`` is a multiline statement.
     """
     if getattr(node, "_broken_positions", None):
+      # This node was marked in util.annotate_fstring_nodes as having untrustworthy lineno/col_offset.
       return (1, 0), (1, 0)
 
     if supports_tokenless(node):

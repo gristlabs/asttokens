@@ -439,8 +439,8 @@ if sys.version_info[:2] >= (3, 8):
         setattr(part, '_broken_positions', True)  # use setattr for mypy
 
         if isinstance(part, ast.FormattedValue):
-          for child in walk(part.value):
-            if not fstring_positions_work():
+          if not fstring_positions_work():
+            for child in walk(part.value):
               setattr(child, '_broken_positions', True)
 
           if part.format_spec:  # this is another JoinedStr
