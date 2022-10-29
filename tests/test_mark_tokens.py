@@ -31,7 +31,7 @@ class TestMarkTokens(unittest.TestCase):
 
   def create_mark_checker(self, source, verify=True):
     atok = self.create_asttokens(source)
-    checker = tools.MarkChecker(atok)
+    checker = tools.MarkChecker(atok, self.is_astroid_test)
 
     # The last token should always be an ENDMARKER
     # None of the nodes should contain that token
@@ -442,12 +442,12 @@ bar = ('x y z'   # comment2
     self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
 
   if not six.PY2:
-    def test_bad_unmarked_types(self):
-      # Cases where get_text_unmarked is incorrect in 3.8.
+    def test_bad_tokenless_types(self):
+      # Cases where _get_text_positions_tokenless is incorrect in 3.8.
       source = textwrap.dedent("""
         def foo(*, name: str):  # keyword-only argument with type annotation
           pass
-        
+
         f(*(x))  # ast.Starred with parentheses
       """)
       self.create_mark_checker(source)
