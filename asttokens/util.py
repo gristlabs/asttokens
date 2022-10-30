@@ -24,8 +24,18 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Un
 
 from six import iteritems
 
+try:
+  from astroid import nodes as astroid_node_classes
+  getattr(astroid_node_classes, "NodeNG")
+except Exception:
+  try:
+    from astroid import node_classes as astroid_node_classes
+  except Exception:
+    astroid_node_classes = None
+
+
 if TYPE_CHECKING:  # pragma: no cover
-  from astroid.node_classes import NodeNG
+  NodeNG = astroid_node_classes.NodeNG
 
   # Type class used to expand out the definition of AST to include fields added by this library
   # It's not actually used for anything other than type checking though!
@@ -216,6 +226,11 @@ def is_slice(node):
           and any(map(is_slice, cast(ast.Tuple, node).elts))
       )
   )
+
+
+def is_astroid_slice(node):
+  # type: (AstNode) -> bool
+  return is_slice(node) and not isinstance(node, ast.AST)
 
 
 # Sentinel value used by visit_tree().

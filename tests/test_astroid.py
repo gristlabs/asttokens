@@ -2,9 +2,9 @@
 from __future__ import unicode_literals, print_function
 
 import astroid
-from astroid.node_classes import NodeNG
 
 from asttokens import ASTTokens
+from asttokens.util import astroid_node_classes
 from . import test_mark_tokens
 
 
@@ -13,7 +13,7 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
   is_astroid_test = True
   module = astroid
 
-  nodes_classes = NodeNG
+  nodes_classes = astroid_node_classes.NodeNG
   context_classes = [
     (astroid.Name, astroid.DelName, astroid.AssignName),
     (astroid.Attribute, astroid.DelAttr, astroid.AssignAttr),
