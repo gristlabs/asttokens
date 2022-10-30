@@ -228,9 +228,13 @@ def is_slice(node):
   )
 
 
-def is_astroid_slice(node):
+def is_empty_astroid_slice(node):
   # type: (AstNode) -> bool
-  return is_slice(node) and not isinstance(node, ast.AST)
+  return (
+      node.__class__.__name__ == "Slice"
+      and not isinstance(node, ast.AST)
+      and node.lower is node.upper is node.step
+  )
 
 
 # Sentinel value used by visit_tree().

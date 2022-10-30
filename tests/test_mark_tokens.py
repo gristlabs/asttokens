@@ -235,7 +235,7 @@ b +     # line3
 
   def test_slices(self):
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
-    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], [a[:]][::-1])"
+    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], bar2[:, ::2], [a[:]][::-1])"
     m = self.create_mark_checker(source)
     self.assertIn("Tuple:" + source, m.view_nodes_at(1, 0))
     self.assertEqual(m.view_nodes_at(1, 1),

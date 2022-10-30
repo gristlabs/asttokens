@@ -83,7 +83,9 @@ class MarkTokens(object):
     last = None
     for child in cast(Callable, self._iter_children)(node):
       # astroid slices have especially wrong positions, we don't want them to corrupt their parents.
-      if not first or child.first_token.index < first.index and not util.is_astroid_slice(child):
+      if util.is_empty_astroid_slice(child):
+        continue
+      if not first or child.first_token.index < first.index:
         first = child.first_token
       if not last or child.last_token.index > last.index:
         last = child.last_token
