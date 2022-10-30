@@ -7,7 +7,7 @@ except Exception:
   try:
     from astroid import node_classes as astroid_node_classes
     from astroid.node_classes import NodeNG
-  except Exception:
+  except Exception:  # pragma: no cover
     astroid_node_classes = None
     NodeNG = None
 

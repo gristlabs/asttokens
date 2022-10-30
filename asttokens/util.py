@@ -24,10 +24,10 @@ from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Un
 
 from six import iteritems
 
-from .astroid_compat import NodeNG
-
 
 if TYPE_CHECKING:  # pragma: no cover
+  from .astroid_compat import NodeNG
+
   # Type class used to expand out the definition of AST to include fields added by this library
   # It's not actually used for anything other than type checking though!
   class EnhancedAST(AST):
