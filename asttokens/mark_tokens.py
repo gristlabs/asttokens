@@ -23,7 +23,8 @@ import six
 
 from . import util
 from .asttokens import ASTTokens
-from .util import AstConstant, astroid_node_classes as nc
+from .util import AstConstant
+from .astroid_compat import astroid_node_classes as nc
 
 if TYPE_CHECKING:
   from .util import AstNode

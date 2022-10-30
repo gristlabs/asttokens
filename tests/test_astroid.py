@@ -4,7 +4,7 @@ from __future__ import unicode_literals, print_function
 import astroid
 
 from asttokens import ASTTokens
-from asttokens.util import astroid_node_classes
+from asttokens.astroid_compat import astroid_node_classes
 from . import test_mark_tokens
 
 
