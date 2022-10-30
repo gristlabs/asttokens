@@ -26,6 +26,7 @@ from six import iteritems
 
 try:
   from astroid import nodes as astroid_node_classes
+  # astroid_node_classes should be whichever module has the NodeNG class
   getattr(astroid_node_classes, "NodeNG")
 except Exception:
   try:
