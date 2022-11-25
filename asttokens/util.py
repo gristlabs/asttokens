@@ -224,7 +224,7 @@ def is_empty_astroid_slice(node):
   return (
       node.__class__.__name__ == "Slice"
       and not isinstance(node, ast.AST)
-      and node.lower is node.upper is node.step
+      and node.lower is node.upper is node.step is None
   )
 
 
