@@ -19,6 +19,11 @@ from asttokens import util, ASTTokens
 
 from . import tools
 
+try:
+  from astroid.nodes.utils import Position as AstroidPosition
+except Exception:
+  AstroidPosition = ()
+
 
 class TestMarkTokens(unittest.TestCase):
   maxDiff = None
@@ -230,7 +235,7 @@ b +     # line3
 
   def test_slices(self):
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
-    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], [a[:]][::-1])"
+    source = "(foo.Area_Code, str(foo.Phone)[:3], str(foo.Phone)[3:], foo[:], bar[::2, :], bar2[:, ::2], [a[:]][::-1])"
     m = self.create_mark_checker(source)
     self.assertIn("Tuple:" + source, m.view_nodes_at(1, 0))
     self.assertEqual(m.view_nodes_at(1, 1),
@@ -243,7 +248,7 @@ b +     # line3
     # important, so we skip them here.
     self.assertEqual({n for n in m.view_nodes_at(1, 56) if 'Slice:' not in n},
                      { "Subscript:foo[:]", "Name:foo" })
-    self.assertEqual({n for n in m.view_nodes_at(1, 64) if 'Slice:' not in n},
+    self.assertEqual({n for n in m.view_nodes_at(1, 64) if 'Slice:' not in n and 'Tuple:' not in n},
                      { "Subscript:bar[::2, :]", "Name:bar" })
 
   def test_adjacent_strings(self):
@@ -813,6 +818,10 @@ partial_sums = [total := total + v for v in values]
         break
     else:
       self.assertEqual(type(t1), type(t2))
+
+    if isinstance(t1, AstroidPosition):
+      # Ignore the lineno/col_offset etc. from astroid
+      return
 
     if isinstance(t1, (list, tuple)):
       self.assertEqual(len(t1), len(t2))

@@ -20,5 +20,5 @@ disallow_untyped_calls=false
 ignore_missing_imports=true
 
 [[tool.mypy.overrides]]
-module = ["astroid", "astroid.node_classes"]
+module = ["astroid", "astroid.node_classes", "astroid.nodes", "astroid.nodes.utils"]
 ignore_missing_imports = true
