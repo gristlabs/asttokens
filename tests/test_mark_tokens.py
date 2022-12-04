@@ -750,6 +750,32 @@ if all((nonblank := line).strip() == '' for line in lines):
 partial_sums = [total := total + v for v in values]
 """)
 
+  if sys.version_info >= (3, 10):
+    def test_match_case(self):
+      m = self.create_mark_checker("""
+if 0:
+  match x:
+    case 1:
+      if z:
+        pass
+    case 2 if y:
+      pass
+    case _:
+      match y:
+        case 1:
+          pass
+        case _:
+          pass
+""")
+      self.assertEqual(m.view_nodes_at(10, 6), {
+        'Match:'
+        '      match y:\n'
+        '        case 1:\n'
+        '          pass\n'
+        '        case _:\n'
+        '          pass',
+      })
+
   def parse_snippet(self, text, node):
     """
     Returns the parsed AST tree for the given text, handling issues with indentation and newlines
