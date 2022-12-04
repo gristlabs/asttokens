@@ -755,10 +755,10 @@ partial_sums = [total := total + v for v in values]
       m = self.create_mark_checker("""
 if 0:
   match x:
-    case 1:
+    case ast.BinOp():
       if z:
         pass
-    case 2 if y:
+    case cls(a,b) if y:
       pass
     case _:
       match y:
