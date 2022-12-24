@@ -125,5 +125,5 @@ class TestFstringPositionsWork(unittest.TestCase):
   def test_fstring_positions_work(self):
     self.assertEqual(
       fstring_positions_work() and supports_tokenless(),
-      sys.version_info >= (3, 9, 7),
+      sys.version_info >= (3, 10, 6),
     )

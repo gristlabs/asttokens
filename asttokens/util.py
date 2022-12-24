@@ -418,12 +418,17 @@ if sys.version_info[:2] >= (3, 8):
     Specifically this checks:
      - Values with a format spec or conversion
      - Repeated (i.e. identical-looking) expressions
-     - Multiline f-strings implicitly concatenated.
+     - f-strings implicitly concatenated over multiple lines.
+     - Multiline, triple-quoted f-strings.
     """
     source = """(
       f"a {b}{b} c {d!r} e {f:g} h {i:{j}} k {l:{m:n}}"
       f"a {b}{b} c {d!r} e {f:g} h {i:{j}} k {l:{m:n}}"
       f"{x + y + z} {x} {y} {z} {z} {z!a} {z:z}"
+      f'''
+      {s} {t}
+      {u} {v}
+      '''
     )"""
     tree = ast.parse(source)
     name_nodes = [node for node in ast.walk(tree) if isinstance(node, ast.Name)]
