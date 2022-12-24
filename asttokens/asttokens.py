@@ -58,7 +58,7 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
     This means that if ``padded`` is True, the start position will be adjusted to include
     leading whitespace if ``node`` is a multiline statement.
     """
-    raise NotImplementedError
+    raise NotImplementedError  # pragma: no cover
 
   def get_text_range(self, node, padded=True):
     # type: (AstNode, bool) -> Tuple[int, int]
@@ -336,7 +336,8 @@ class ASTText(ASTTextBase, object):
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
     """
-    if sys.version_info[:2] < (3, 8):
+    if sys.version_info[:2] < (3, 8):  # pragma: no cover
+      # This is just for mpypy
       raise AssertionError("This method should only be called internally after checking supports_tokenless()")
 
     if isinstance(node, ast.Module):
