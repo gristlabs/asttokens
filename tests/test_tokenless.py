@@ -98,7 +98,7 @@ class TestTokenless(unittest.TestCase):
       ast_text = ast.get_source_segment(source, node, padded=padded)
       atok_text = atok.get_text(node, padded=padded)
       if ast_text:
-        if (
+        if sys.version_info < (3, 12) and (
           ast_text.startswith("f") and isinstance(node, (ast.Str, ast.FormattedValue))
           or is_fstring_format_spec(node)
           or (not fstring_positions_work() and is_fstring_internal_node(node))

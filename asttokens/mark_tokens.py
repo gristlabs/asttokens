@@ -361,7 +361,20 @@ class MarkTokens(object):
                       last_token,  # type: util.Token
                       ):
     # type: (...) -> Tuple[util.Token, util.Token]
-    return self.handle_str(first_token, last_token)
+    if sys.version_info >= (3, 12):
+      last = first_token
+      while True:
+        if util.match_token(last, token.FSTRING_START):
+          last_token = self._code.find_token(last, token.FSTRING_END)
+          last = self._code.next_token(last_token)
+        elif util.match_token(last, token.STRING):
+          last_token = last
+          last = self._code.next_token(last_token)
+        else:
+          break
+      return (first_token, last_token)
+    else:
+      return self.handle_str(first_token, last_token)
 
   def visit_bytes(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]

@@ -446,6 +446,8 @@ if sys.version_info[:2] >= (3, 8):
     Add a special attribute `_broken_positions` to nodes inside f-strings
     if the lineno/col_offset cannot be trusted.
     """
+    if sys.version_info >= (3, 12):
+      return
     for joinedstr in walk(tree):
       if not isinstance(joinedstr, ast.JoinedStr):
         continue

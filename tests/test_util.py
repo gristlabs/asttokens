@@ -3,6 +3,7 @@ from __future__ import unicode_literals, print_function
 
 import ast
 import io
+import sys
 import token
 import unittest
 
@@ -123,26 +124,31 @@ if six.PY3:
 
     text = "℘·2=1"
     original_tokens = list(generate_tokens(io.StringIO(text).readline))[:4]
-    assert original_tokens == [
-      TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
-      TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
-      TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
+    correct_tokens = [
+      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
       TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
     ]
-    assert combine_tokens(original_tokens[:1]) == [
-      TokenInfo(NAME, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
-    ]
-    assert combine_tokens(original_tokens[:2]) == [
-      TokenInfo(NAME, string='℘·', start=(1, 0), end=(1, 2), line='℘·2=1'),
-    ]
-    assert combine_tokens(original_tokens[:3]) == [
-      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
-    ]
+    if sys.version_info >= (3, 12):
+      original_tokens = original_tokens[:2]
+      assert original_tokens == correct_tokens
+    else:
+      assert original_tokens == [
+        TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+        TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
+        TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
+        TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
+      ]
+      assert combine_tokens(original_tokens[:1]) == [
+        TokenInfo(NAME, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+      ]
+      assert combine_tokens(original_tokens[:2]) == [
+        TokenInfo(NAME, string='℘·', start=(1, 0), end=(1, 2), line='℘·2=1'),
+      ]
+      assert combine_tokens(original_tokens[:3]) == [
+        TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+      ]
 
-    assert list(patched_generate_tokens(iter(original_tokens))) == [
-      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
-      TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
-    ]
+    assert list(patched_generate_tokens(iter(original_tokens))) == correct_tokens
     assert list(patched_generate_tokens(iter(original_tokens[:-1]))) == [
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
     ]
