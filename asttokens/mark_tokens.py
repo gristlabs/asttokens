@@ -364,8 +364,8 @@ class MarkTokens(object):
     if sys.version_info >= (3, 12):
       last = first_token
       while True:
-        if util.match_token(last, token.FSTRING_START):
-          last_token = self._code.find_token(last, token.FSTRING_END)
+        if util.match_token(last, token.FSTRING_START):  # type: ignore
+          last_token = self._code.find_token(last, token.FSTRING_END)  # type: ignore
           last = self._code.next_token(last_token)
         elif util.match_token(last, token.STRING):
           last_token = last
