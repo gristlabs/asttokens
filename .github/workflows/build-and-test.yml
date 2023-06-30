@@ -23,7 +23,6 @@ jobs:
           # As per https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#pypy list of versions
           - pypy-2.7
           - pypy-3.6
-          - pypy-3.7
           - pypy-3.8
     env:
       ASTTOKENS_SLOW_TESTS: 1
