@@ -12,7 +12,6 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - 2.7
           - 3.5
           - 3.6
           - 3.7
@@ -51,6 +50,41 @@ jobs:
         if: ${{ !contains(fromJson('["2.7", "pypy-2.7", "pypy-3.6", "pypy-3.7"]'), matrix.python-version) }}
         # pypy < 3.8 very doesn't work
         # 2.7 is tested separately in mypy-py2, as we need to run mypy under Python 3.x
+
+      - name: Test with pytest
+        run: |
+          coverage run --branch --include='asttokens/*' -m pytest --junitxml=./rspec.xml
+          coverage report -m
+
+      - name: Collect coverage results
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pip3 install --upgrade coveralls
+          python3 -m coveralls --service=github
+
+  test-py2:
+    # Python 2.7 is no longer available directly with actions/setup-python@v2, but it is when
+    # using a container. See https://github.com/actions/setup-python/issues/672#issuecomment-1589120020.
+    runs-on: ubuntu-20.04
+    container:
+      image: python:2.7.18-buster
+    env:
+      ASTTOKENS_SLOW_TESTS: 1
+      COVERALLS_PARALLEL: true
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python 2.7
+        uses: actions/setup-python@v2
+        with:
+          python-version: 2.7
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
+          pip install .[test]
 
       - name: Test with pytest
         run: |
