@@ -1,5 +1,5 @@
 .. asttokens documentation master file, created by
-   sphinx-quickstart on Sat Dec 10 13:00:48 2016.
+   sphinx-quickstart on Mon Aug  7 10:10:51 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -11,14 +11,15 @@ and text in the source code that generated them. This is helpful for tools that 
 transformations.
 
 .. toctree::
-    :maxdepth: 2
+   :maxdepth: 2
+   :caption: Contents:
 
-    user-guide
-    api-index
+   user-guide
+   api-index
 
 License
 -------
-Copyright 2016, Grist Labs, Inc. Licensed under the Apache License, Version 2.0.
+Copyright 2023, Grist Labs, Inc. Licensed under the Apache License, Version 2.0.
 
 Indices and tables
 ==================
