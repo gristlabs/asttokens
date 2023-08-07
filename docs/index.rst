@@ -1,5 +1,5 @@
 .. asttokens documentation master file, created by
-   sphinx-quickstart on Mon Aug  7 10:10:51 2023.
+   sphinx-quickstart on Mon Aug  7 11:16:41 2023.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -12,7 +12,6 @@ transformations.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    user-guide
    api-index
