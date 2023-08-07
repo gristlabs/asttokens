@@ -86,11 +86,13 @@ jobs:
           coverage run --branch --include='asttokens/*' -m pytest --junitxml=./rspec.xml
           coverage report -m
 
-      - name: Collect coverage results
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python -m coveralls --service=github
+      ## Coveralls don't work out of the box in this Python 2.7 container.
+      #- name: Collect coverage results
+      #  env:
+      #    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #  run: |
+      #    pip3 install --upgrade coveralls
+      #    python3 -m coveralls --service=github
 
   # Can't run mypy on Python 2.7, but can run it in Python 2 mode
   mypy-py2:
