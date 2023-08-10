@@ -1,0 +1,8 @@
+# After updating, or to pick up newer versions, run:
+#   env/bin/pip-compile -o docs/requirements.txt docs/requirements.in
+# To bring venv up-to-date, run:
+#   env/bin/pip-sync docs/requirements.txt
+sphinx
+sphinx_rtd_theme
+readthedocs-sphinx-search
+six

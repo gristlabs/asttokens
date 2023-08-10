@@ -1,4 +1,0 @@
-Pygments
-Sphinx
-docutils
-sphinx-autobuild

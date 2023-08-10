@@ -8,6 +8,11 @@ ASTTokens
 .. autoclass:: asttokens.ASTTokens
     :members:
 
+ASTText
+---------
+.. autoclass:: asttokens.ASTText
+    :members:
+
 LineNumbers
 -----------
 .. autoclass:: asttokens.LineNumbers
