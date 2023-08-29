@@ -640,7 +640,7 @@ j  # not a complex number, just a name
 
         try:
           filename = inspect.getsourcefile(module)
-        except TypeError:
+        except Exception:  # some modules raise weird errors
           continue
 
         if not filename:
