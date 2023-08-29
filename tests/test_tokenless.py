@@ -120,6 +120,23 @@ class TestTokenless(unittest.TestCase):
     with self.assertRaises(NotImplementedError):
       ASTText(source, tree)
 
+  def test_nested_fstrings(self):
+    f1 = 'f"a {1+2} b {3+4} c"'
+    f2 = "f'd {" + f1 + "} e'"
+    f3 = "f'''{" + f2 + "}{" + f1 + "}'''"
+    f4 = 'f"""{' + f3 + '}"""'
+    s = 'f = ' + f4
+    atok = ASTText(s)
+    self.assertEqual(atok.get_text(atok.tree), s)
+    n4 = atok.tree.body[0].value
+    n3 = n4.values[0].value
+    n2 = n3.values[0].value
+    n1 = n2.values[1].value
+    self.assertEqual(atok.get_text(n4), f4)
+    self.assertEqual(atok.get_text(n3), f3)
+    self.assertEqual(atok.get_text(n2), f2)
+    self.assertEqual(atok.get_text(n1), f1)
+
 
 class TestFstringPositionsWork(unittest.TestCase):
   def test_fstring_positions_work(self):
