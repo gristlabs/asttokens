@@ -133,9 +133,14 @@ class TestTokenless(unittest.TestCase):
     n2 = n3.values[0].value
     n1 = n2.values[1].value
     self.assertEqual(atok.get_text(n4), f4)
-    self.assertEqual(atok.get_text(n3), f3)
-    self.assertEqual(atok.get_text(n2), f2)
-    self.assertEqual(atok.get_text(n1), f1)
+    if fstring_positions_work():
+      self.assertEqual(atok.get_text(n3), f3)
+      self.assertEqual(atok.get_text(n2), f2)
+      self.assertEqual(atok.get_text(n1), f1)
+    else:
+      self.assertEqual(atok.get_text(n3), '')
+      self.assertEqual(atok.get_text(n2), '')
+      self.assertEqual(atok.get_text(n1), '')
 
 
 class TestFstringPositionsWork(unittest.TestCase):

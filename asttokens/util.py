@@ -459,6 +459,11 @@ if sys.version_info[:2] >= (3, 8):
           if not fstring_positions_work():
             for child in walk(part.value):
               setattr(child, '_broken_positions', True)
+              if isinstance(child, ast.JoinedStr):
+                # Recursively handle this inner JoinedStr in the same way.
+                # While this is usually automatic for other nodes,
+                # the children of f-strings are explicitly excluded in iter_children_ast.
+                annotate_fstring_nodes(child)
 
           if part.format_spec:  # this is another JoinedStr
             # Again, the standard positions span the full f-string.
