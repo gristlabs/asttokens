@@ -666,6 +666,12 @@ j  # not a complex number, just a name
             #     if sys.version_info >= (3, 11):
             #         NamedTuple = typing.NamedTuple
             or filename.endswith("typing_extensions.py")
+            # Astroid fails with:
+            #     AttributeError: 'TreeRebuilder' object has no attribute 'visit_typealias'
+            # See https://github.com/gristlabs/asttokens/actions/runs/6015907789/job/16318767911?pr=110
+            # Should be fixed in the next astroid release:
+            #     https://github.com/pylint-dev/pylint/issues/8782#issuecomment-1669967220
+            or filename.endswith("typing.py")
         ):
           print('Skipping', filename)
           continue
