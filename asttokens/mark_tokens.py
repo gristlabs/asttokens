@@ -365,7 +365,14 @@ class MarkTokens(object):
       last = first_token
       while True:
         if util.match_token(last, token.FSTRING_START):  # type: ignore
-          last_token = self._code.find_token(last, token.FSTRING_END)  # type: ignore
+          count = 1
+          while count > 0:
+            last = self._code.next_token(last)
+            if util.match_token(last, token.FSTRING_START):  # type: ignore
+              count += 1
+            elif util.match_token(last, token.FSTRING_END):  # type: ignore
+              count -= 1
+          last_token = last
           last = self._code.next_token(last_token)
         elif util.match_token(last, token.STRING):
           last_token = last
