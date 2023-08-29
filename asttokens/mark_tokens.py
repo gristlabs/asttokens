@@ -364,13 +364,13 @@ class MarkTokens(object):
     if sys.version_info >= (3, 12):
       last = first_token
       while True:
-        if util.match_token(last, token.FSTRING_START):  # type: ignore
+        if util.match_token(last, getattr(token, "FSTRING_START")):
           count = 1
           while count > 0:
             last = self._code.next_token(last)
-            if util.match_token(last, token.FSTRING_START):  # type: ignore
+            if util.match_token(last, getattr(token, "FSTRING_START")):
               count += 1
-            elif util.match_token(last, token.FSTRING_END):  # type: ignore
+            elif util.match_token(last, getattr(token, "FSTRING_END")):
               count -= 1
           last_token = last
           last = self._code.next_token(last_token)
