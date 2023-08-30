@@ -507,6 +507,10 @@ bar = ('x y z'   # comment2
       @deco3()
       def g(x):
         pass
+      
+      @deco4
+      class C:
+        pass
     """)
     m = self.create_mark_checker(source)
     # The `arguments` node has bogus positions here (and whenever there are no arguments). We

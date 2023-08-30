@@ -350,7 +350,10 @@ class ASTText(ASTTextBase, object):
 
     assert node  # tell mypy that node is not None, which we allowed up to here for compatibility
 
-    decorators = getattr(node, 'decorator_list', [])
+    if getattr(node, 'decorators', None):
+      decorators = node.decorators.nodes
+    else:
+      decorators = getattr(node, 'decorator_list', [])
     if decorators:
       # Function/Class definition nodes are marked by AST as starting at def/class,
       # not the first decorator. This doesn't match the token-using behavior,
