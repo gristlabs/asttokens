@@ -2,8 +2,6 @@ import ast
 import sys
 import unittest
 
-import astroid
-
 from asttokens import ASTText, supports_tokenless
 from asttokens.util import fstring_positions_work
 
@@ -113,12 +111,6 @@ class TestTokenless(unittest.TestCase):
               (node.end_lineno, node.end_col_offset),
             ),
           )
-
-  def test_lazy_asttext_astroid_errors(self):
-    builder = astroid.builder.AstroidBuilder()
-    tree = builder.string_build(source)
-    with self.assertRaises(NotImplementedError):
-      ASTText(source, tree)
 
   def test_nested_fstrings(self):
     f1 = 'f"a {1+2} b {3+4} c"'

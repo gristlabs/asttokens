@@ -18,13 +18,16 @@ import bisect
 import sys
 import token
 from ast import Module
-from typing import Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING, Type
+from typing import Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
 
 import six
 from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from .line_numbers import LineNumbers
-from .util import Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt, annotate_fstring_nodes, generate_tokens
+from .util import (
+  Token, match_token, is_non_coding_token, patched_generate_tokens, last_stmt,
+  annotate_fstring_nodes, generate_tokens, is_module, is_stmt
+)
 
 if TYPE_CHECKING:  # pragma: no cover
   from .util import AstNode, TokenInfo
@@ -135,7 +138,7 @@ class ASTTokens(ASTTextBase, object):
     ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
     """
     # The hard work of this class is done by MarkTokens
-    from .mark_tokens import MarkTokens # to avoid import loops
+    from .mark_tokens import MarkTokens  # to avoid import loops
     MarkTokens(self).visit_tree(root_node)
 
   def _translate_tokens(self, original_tokens):
@@ -228,7 +231,7 @@ class ASTTokens(ASTTextBase, object):
     """
     Looks for the first token, starting at start_token, that matches tok_type and, if given, the
     token string. Searches backwards if reverse is True. Returns ENDMARKER token if not found (you
-    can check it with `token.ISEOF(t.type)`.
+    can check it with `token.ISEOF(t.type)`).
     """
     t = start_token
     advance = self.prev_token if reverse else self.next_token
@@ -289,8 +292,6 @@ class ASTText(ASTTextBase, object):
 
   It also (sometimes) supports nodes inside f-strings, which ``ASTTokens`` doesn't.
 
-  Astroid trees are not supported at all and will raise an error.
-
   Some node types and/or Python versions are not supported.
   In these cases the ``get_text*`` methods will fall back to using ``ASTTokens``
   which incurs the usual setup cost the first time.
@@ -300,9 +301,6 @@ class ASTText(ASTTextBase, object):
     # type: (Any, Optional[Module], str) -> None
     # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
     # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
-    if not isinstance(tree, (ast.AST, type(None))):
-      raise NotImplementedError('ASTText only supports AST trees')
 
     super(ASTText, self).__init__(source_text, filename)
 
@@ -332,7 +330,7 @@ class ASTText(ASTTextBase, object):
     return self._asttokens
 
   def _get_text_positions_tokenless(self, node, padded):
-    # type: (ast.AST, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
+    # type: (AstNode, bool) -> Tuple[Tuple[int, int], Tuple[int, int]]
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
     """
@@ -340,14 +338,14 @@ class ASTText(ASTTextBase, object):
       # This is just for mpypy
       raise AssertionError("This method should only be called internally after checking supports_tokenless()")
 
-    if isinstance(node, ast.Module):
+    if is_module(node):
       # Modules don't have position info, so just return the range of the whole text.
       # The token-using method does something different, but its behavior seems weird and inconsistent.
       # For example, in a file with only comments, it only returns the first line.
       # It's hard to imagine a case when this matters.
       return (1, 0), self._line_numbers.offset_to_line(len(self._text))
 
-    if not hasattr(node, 'lineno'):
+    if getattr(node, 'lineno', None) is None:
       return (1, 0), (1, 0)
 
     assert node  # tell mypy that node is not None, which we allowed up to here for compatibility
@@ -361,7 +359,16 @@ class ASTText(ASTTextBase, object):
     else:
       start_node = node
 
-    if padded and last_stmt(node).lineno != node.lineno:
+    if padded and (
+        last_stmt(node).lineno != node.lineno
+        or (
+            node.lineno != node.end_lineno
+            and (
+                getattr(node, "doc_node", None) and is_stmt(node)
+                or type(node).__name__ == "Decorators"
+            )
+        )
+    ):
       # Include leading indentation for multiline statements.
       start_col_offset = 0
     else:
@@ -402,19 +409,15 @@ class ASTText(ASTTextBase, object):
 
 
 # Node types that _get_text_positions_tokenless doesn't support. Only relevant for Python 3.8+.
-_unsupported_tokenless_types = ()  # type: Tuple[Type[ast.AST], ...]
+_unsupported_tokenless_types = ()  # type: Tuple[str, ...]
 if sys.version_info[:2] >= (3, 8):
-  _unsupported_tokenless_types += (
-    # no lineno
-    ast.arguments, ast.withitem,
-  )
+  # no lineno
+  _unsupported_tokenless_types += ("arguments", "Arguments", "withitem")
   if sys.version_info[:2] == (3, 8):
-    _unsupported_tokenless_types += (
-      # _get_text_positions_tokenless works incorrectly for these types due to bugs in Python 3.8.
-      ast.arg, ast.Starred,
-      # no lineno in 3.8
-      ast.Slice, ast.ExtSlice, ast.Index, ast.keyword,
-    )
+    # _get_text_positions_tokenless works incorrectly for these types due to bugs in Python 3.8.
+    _unsupported_tokenless_types += ("arg", "Starred")
+    # no lineno in 3.8
+    _unsupported_tokenless_types += ("Slice", "ExtSlice", "Index", "keyword")
 
 
 def supports_tokenless(node=None):
@@ -428,8 +431,10 @@ def supports_tokenless(node=None):
 
     - Python 3.7 and earlier
     - PyPy
-    - Astroid nodes (``get_text*`` methods of ``ASTText`` will raise an error)
-    - ``ast.arguments`` and ``ast.withitem``
+    - ``ast.arguments`` / ``astroid.Arguments``
+    - ``ast.withitem``
+    - ``astroid.Comprehension``
+    - ``astroid.AssignName`` inside ``astroid.Arguments`` or ``astroid.ExceptHandler``
     - The following nodes in Python 3.8 only:
       - ``ast.arg``
       - ``ast.Starred``
@@ -439,8 +444,16 @@ def supports_tokenless(node=None):
       - ``ast.keyword``
   """
   return (
-      isinstance(node, (ast.AST, type(None)))
-      and not isinstance(node, _unsupported_tokenless_types)
+      type(node).__name__ not in _unsupported_tokenless_types
+      and not (
+        # astroid nodes
+        not isinstance(node, (ast.AST, type(None))) and (
+          (
+            type(node).__name__ == "AssignName"
+            and type(node.parent).__name__ in ("Arguments", "ExceptHandler")
+          )
+        )
+      )
       and sys.version_info[:2] >= (3, 8)
       and 'pypy' not in sys.version.lower()
   )

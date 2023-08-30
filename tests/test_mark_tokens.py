@@ -36,7 +36,7 @@ class TestMarkTokens(unittest.TestCase):
 
   def create_mark_checker(self, source, verify=True):
     atok = self.create_asttokens(source)
-    checker = tools.MarkChecker(atok, self.is_astroid_test)
+    checker = tools.MarkChecker(atok)
 
     # The last token should always be an ENDMARKER
     # None of the nodes should contain that token
