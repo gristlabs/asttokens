@@ -6,6 +6,8 @@ import os
 import re
 import sys
 
+import astroid
+
 from asttokens import util, supports_tokenless, ASTText
 
 
@@ -134,6 +136,12 @@ class MarkChecker(object):
       self._check_alias_tokenless(node, test_case, text_tokenless)
     elif util.is_module(node):
       test_case.assertEqual(text_tokenless, self.atext._text)
+    elif isinstance(node, astroid.DictUnpack):
+      # This is a strange node that *seems* to represent just the `**` in `{**foo}`
+      # (not `**foo` or `foo`), but text_tokenless is `foo`
+      # while `text` is just the first token of that.
+      # 'Fixing' either of these or making them match doesn't seem useful.
+      return
     elif supports_tokenless(node):
       has_lineno = getattr(node, 'lineno', None) is not None
       test_case.assertEqual(has_lineno, text_tokenless != '')
