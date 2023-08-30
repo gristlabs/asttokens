@@ -447,7 +447,7 @@ def supports_tokenless(node=None):
       type(node).__name__ not in _unsupported_tokenless_types
       and not (
         # astroid nodes
-        not isinstance(node, (ast.AST, type(None))) and (
+        not isinstance(node, ast.AST) and node is not None and (
           (
             type(node).__name__ == "AssignName"
             and type(node.parent).__name__ in ("Arguments", "ExceptHandler")
