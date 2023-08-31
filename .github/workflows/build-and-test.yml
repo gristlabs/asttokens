@@ -44,6 +44,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install python2.7 -y
+          # Get everything to use this new Python as the default.
+          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
+          sudo python2.7 get-pip.py
+          sudo ln -sf /usr/bin/pip2 /usr/bin/pip
+          sudo ln -sf /usr/bin/python2.7 /usr/bin/python
 
       - name: Install dependencies
         run: |
