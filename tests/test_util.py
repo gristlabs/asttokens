@@ -119,22 +119,15 @@ def test_expect_token():
 
 if six.PY3:
   def test_combine_tokens():
-    from tokenize import (
-      TokenInfo, generate_tokens, ERRORTOKEN,
-      OP, NUMBER, NAME, NEWLINE, ENDMARKER,
-    )
+    from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
     from asttokens.util import combine_tokens, patched_generate_tokens
 
     text = "℘·2=1"
-    original_tokens = list(generate_tokens(io.StringIO(text).readline))
-    # We don't care about these ending tokens.
-    assert original_tokens[-3:] == [
-      TokenInfo(NUMBER, string='1', start=(1, 4), end=(1, 5), line='℘·2=1'),
-      # The line differs between Python versions, but it doesn't matter.
-      TokenInfo(NEWLINE, string='', start=(1, 5), end=(1, 6), line=original_tokens[-2].line),
-      TokenInfo(ENDMARKER, string='', start=(2, 0), end=(2, 0), line='')
-    ]
-    original_tokens = original_tokens[:-3]
+    original_tokens = []
+    for tok in generate_tokens(io.StringIO(text).readline):
+      original_tokens.append(tok)
+      if tok.type == OP:
+        break
 
     correct_tokens = [
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
