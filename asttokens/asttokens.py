@@ -352,6 +352,7 @@ class ASTText(ASTTextBase, object):
 
     decorators = getattr(node, 'decorator_list', [])
     if not decorators:
+      # Astroid uses node.decorators.nodes instead of node.decorator_list.
       decorators_node = getattr(node, 'decorators', None)
       decorators = getattr(decorators_node, 'nodes', [])
     if decorators:
@@ -365,15 +366,23 @@ class ASTText(ASTTextBase, object):
     start_lineno = start_node.lineno
     end_node = last_stmt(node)
 
+    # Include leading indentation for multiline statements.
+    # This doesn't mean simple statements that happen to be on multiple lines,
+    # but compound statements where inner indentation matters.
+    # So we don't just compare node.lineno and node.end_lineno,
+    # we check for a contained statement starting on a different line.
     if padded and (
         start_lineno != end_node.lineno
         or (
+            # Astroid docstrings aren't treated as separate statements.
+            # So to handle function/class definitions with a docstring but no other body,
+            # we just check that the node is a statement with a docstring
+            # and spanning multiple lines in the simple, literal sense.
             start_lineno != node.end_lineno
             and getattr(node, "doc_node", None)
             and is_stmt(node)
         )
     ):
-      # Include leading indentation for multiline statements.
       start_col_offset = 0
     else:
       start_col_offset = self._line_numbers.from_utf8_col(start_lineno, start_node.col_offset)
