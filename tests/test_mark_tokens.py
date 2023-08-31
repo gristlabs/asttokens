@@ -627,6 +627,8 @@ j  # not a complex number, just a name
       so it only tests all modules if the environment variable
       ASTTOKENS_SLOW_TESTS has been set.
       """
+      from .test_astroid import AstroidTreeException
+
       modules = list(sys.modules.values())
       if not os.environ.get('ASTTOKENS_SLOW_TESTS'):
         modules = modules[:20]
@@ -640,7 +642,7 @@ j  # not a complex number, just a name
 
         try:
           filename = inspect.getsourcefile(module)
-        except TypeError:
+        except Exception:  # some modules raise weird errors
           continue
 
         if not filename:
@@ -657,20 +659,21 @@ j  # not a complex number, just a name
         if self.is_astroid_test and (
             # Astroid fails with a syntax error if a type comment is on its own line
             re.search(r'^\s*# type: ', source, re.MULTILINE)
-            # Astroid can fail on this file, specifically raising an exception at this line of code:
-            #     lambda node: node.name == "NamedTuple" and node.parent.name == "typing"
-            # with the error:
-            #     AttributeError: 'If' object has no attribute 'name'
-            # See https://github.com/gristlabs/asttokens/runs/7602147792
-            # I think the code that causes the problem is:
-            #     if sys.version_info >= (3, 11):
-            #         NamedTuple = typing.NamedTuple
-            or filename.endswith("typing_extensions.py")
         ):
           print('Skipping', filename)
           continue
 
-        self.create_mark_checker(source)
+        try:
+          self.create_mark_checker(source)
+        except AstroidTreeException:
+          # Astroid sometimes fails with errors like:
+          #     AttributeError: 'TreeRebuilder' object has no attribute 'visit_typealias'
+          # See https://github.com/gristlabs/asttokens/actions/runs/6015907789/job/16318767911?pr=110
+          # Should be fixed in the next astroid release:
+          #     https://github.com/pylint-dev/pylint/issues/8782#issuecomment-1669967220
+          # Note that this exception is raised before asttokens is even involved,
+          # it's purely an astroid bug that we can safely ignore.
+          continue
 
   if six.PY3:
     def test_dict_merge(self):

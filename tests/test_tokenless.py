@@ -98,7 +98,7 @@ class TestTokenless(unittest.TestCase):
       ast_text = ast.get_source_segment(source, node, padded=padded)
       atok_text = atok.get_text(node, padded=padded)
       if ast_text:
-        if (
+        if sys.version_info < (3, 12) and (
           ast_text.startswith("f") and isinstance(node, (ast.Str, ast.FormattedValue))
           or is_fstring_format_spec(node)
           or (not fstring_positions_work() and is_fstring_internal_node(node))
@@ -119,6 +119,28 @@ class TestTokenless(unittest.TestCase):
     tree = builder.string_build(source)
     with self.assertRaises(NotImplementedError):
       ASTText(source, tree)
+
+  def test_nested_fstrings(self):
+    f1 = 'f"a {1+2} b {3+4} c"'
+    f2 = "f'd {" + f1 + "} e'"
+    f3 = "f'''{" + f2 + "}{" + f1 + "}'''"
+    f4 = 'f"""{' + f3 + '}"""'
+    s = 'f = ' + f4
+    atok = ASTText(s)
+    self.assertEqual(atok.get_text(atok.tree), s)
+    n4 = atok.tree.body[0].value
+    n3 = n4.values[0].value
+    n2 = n3.values[0].value
+    n1 = n2.values[1].value
+    self.assertEqual(atok.get_text(n4), f4)
+    if fstring_positions_work():
+      self.assertEqual(atok.get_text(n3), f3)
+      self.assertEqual(atok.get_text(n2), f2)
+      self.assertEqual(atok.get_text(n1), f1)
+    else:
+      self.assertEqual(atok.get_text(n3), '')
+      self.assertEqual(atok.get_text(n2), '')
+      self.assertEqual(atok.get_text(n1), '')
 
 
 class TestFstringPositionsWork(unittest.TestCase):

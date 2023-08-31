@@ -35,5 +35,12 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
   @staticmethod
   def create_asttokens(source):
     builder = astroid.builder.AstroidBuilder()
-    tree = builder.string_build(source)
+    try:
+      tree = builder.string_build(source)
+    except AttributeError as e:
+      raise AstroidTreeException(str(e))
     return ASTTokens(source, tree=tree)
+
+
+class AstroidTreeException(Exception):
+  pass
