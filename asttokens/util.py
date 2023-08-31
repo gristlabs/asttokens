@@ -447,6 +447,8 @@ if sys.version_info[:2] >= (3, 8):
     if the lineno/col_offset cannot be trusted.
     """
     if sys.version_info >= (3, 12):
+      # f-strings were weirdly implemented until https://peps.python.org/pep-0701/
+      # In Python 3.12, inner nodes have sensible positions.
       return
     for joinedstr in walk(tree):
       if not isinstance(joinedstr, ast.JoinedStr):
