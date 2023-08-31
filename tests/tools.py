@@ -142,6 +142,9 @@ class MarkChecker(object):
       # while `text` is just the first token of that.
       # 'Fixing' either of these or making them match doesn't seem useful.
       return
+    elif isinstance(node, astroid.Decorators):
+      # Another strange node where it's not worth making the two texts match
+      return
     elif supports_tokenless(node):
       has_lineno = getattr(node, 'lineno', None) is not None
       test_case.assertEqual(has_lineno, text_tokenless != '')

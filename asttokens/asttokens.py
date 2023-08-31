@@ -362,27 +362,27 @@ class ASTText(ASTTextBase, object):
     else:
       start_node = node
 
+    start_lineno = start_node.lineno
+    end_node = last_stmt(node)
+
     if padded and (
-        last_stmt(node).lineno != node.lineno
+        start_lineno != end_node.lineno
         or (
-            node.lineno != node.end_lineno
-            and (
-                getattr(node, "doc_node", None) and is_stmt(node)
-                or type(node).__name__ == "Decorators"
-            )
+            start_lineno != node.end_lineno
+            and getattr(node, "doc_node", None)
+            and is_stmt(node)
         )
     ):
       # Include leading indentation for multiline statements.
       start_col_offset = 0
     else:
-      start_col_offset = self._line_numbers.from_utf8_col(start_node.lineno, start_node.col_offset)
+      start_col_offset = self._line_numbers.from_utf8_col(start_lineno, start_node.col_offset)
 
-    start = (start_node.lineno, start_col_offset)
+    start = (start_lineno, start_col_offset)
 
     # To match the token-using behaviour, we exclude trailing semicolons and comments.
     # This means that for blocks containing multiple statements, we have to use the last one
     # instead of the actual node for end_lineno and end_col_offset.
-    end_node = last_stmt(node)
     end_lineno = cast(int, end_node.end_lineno)
     end_col_offset = cast(int, end_node.end_col_offset)
     end_col_offset = self._line_numbers.from_utf8_col(end_lineno, end_col_offset)
