@@ -149,6 +149,14 @@ class MarkChecker(object):
       has_lineno = getattr(node, 'lineno', None) is not None
       test_case.assertEqual(has_lineno, text_tokenless != '')
       if has_lineno:
+        if (
+            text != text_tokenless
+            and text_tokenless.startswith(text)
+            and text_tokenless[len(text):].strip().startswith('# type: ')
+            and test_case.is_astroid_test
+        ):
+          # astroid positions can include type comments, which we can ignore.
+          return
         test_case.assertEqual(text, text_tokenless)
       else:
         # _get_text_positions_tokenless can't work with nodes without lineno.
