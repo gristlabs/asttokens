@@ -6,6 +6,8 @@ import os
 import re
 import sys
 
+import astroid
+
 from asttokens import util, supports_tokenless, ASTText
 
 
@@ -36,11 +38,10 @@ class MarkChecker(object):
   """
   Helper tool to parse and mark an AST tree, with useful methods for verifying it.
   """
-  def __init__(self, atok, is_astroid_test):
+  def __init__(self, atok):
     self.atok = atok
     self.all_nodes = collect_nodes_preorder(self.atok.tree)
-    if not is_astroid_test:
-      self.atext = ASTText(atok.text, atok.tree, atok.filename)
+    self.atext = ASTText(atok.text, atok.tree, atok.filename)
 
   def get_nodes_at(self, line, col):
     """Returns all nodes that start with the token at the given position."""
@@ -80,6 +81,10 @@ class MarkChecker(object):
 
     tested_nodes = 0
     for node in self.all_nodes:
+      # slices currently only get the correct tokens/text for ast, not astroid.
+      if util.is_slice(node) and test_case.is_astroid_test:
+        continue
+
       text = self.atok.get_text(node)
       self.check_get_text_tokenless(node, test_case, text)
 
@@ -87,10 +92,6 @@ class MarkChecker(object):
           util.is_stmt(node) or
           util.is_expr(node) or
           util.is_module(node)):
-        continue
-
-      # slices currently only get the correct tokens for ast, not astroid.
-      if util.is_slice(node) and test_case.is_astroid_test:
         continue
 
       # await is not allowed outside async functions below 3.7
@@ -127,25 +128,43 @@ class MarkChecker(object):
     whether from `ASTTokens` or `ASTText`.
     """
 
-    if test_case.is_astroid_test or not supports_tokenless():
+    if not supports_tokenless():
       return
 
     text_tokenless = self.atext.get_text(node)
     if isinstance(node, ast.alias):
       self._check_alias_tokenless(node, test_case, text_tokenless)
-    elif isinstance(node, ast.Module):
+    elif util.is_module(node):
       test_case.assertEqual(text_tokenless, self.atext._text)
+    elif isinstance(node, astroid.DictUnpack):
+      # This is a strange node that *seems* to represent just the `**` in `{**foo}`
+      # (not `**foo` or `foo`), but text_tokenless is `foo`
+      # while `text` is just the first token of that.
+      # 'Fixing' either of these or making them match doesn't seem useful.
+      return
+    elif isinstance(node, astroid.Decorators):
+      # Another strange node where it's not worth making the two texts match
+      return
     elif supports_tokenless(node):
-      has_lineno = hasattr(node, 'lineno')
+      has_lineno = getattr(node, 'lineno', None) is not None
       test_case.assertEqual(has_lineno, text_tokenless != '')
       if has_lineno:
-        test_case.assertEqual(text, text_tokenless, ast.dump(node))
+        if (
+            text != text_tokenless
+            and text_tokenless.startswith(text)
+            and text_tokenless[len(text):].strip().startswith('# type: ')
+            and test_case.is_astroid_test
+        ):
+          # astroid positions can include type comments, which we can ignore.
+          return
+        test_case.assertEqual(text, text_tokenless)
       else:
         # _get_text_positions_tokenless can't work with nodes without lineno.
         # Double-check that such nodes are unusual.
         test_case.assertFalse(util.is_stmt(node) or util.is_expr(node))
-        with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
-          test_case.parse_snippet(text, node)
+        if not test_case.is_astroid_test:
+          with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
+            test_case.parse_snippet(text, node)
 
   def _check_alias_tokenless(self, node, test_case, text):
     if sys.version_info < (3, 10):
