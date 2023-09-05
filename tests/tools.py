@@ -12,8 +12,8 @@ from asttokens import util, supports_tokenless, ASTText
 
 
 def get_fixture_path(*path_parts):
-  python_dir = 'python%s' % sys.version_info[0]
-  return os.path.join(os.path.dirname(__file__), "testdata", python_dir, *path_parts)
+  # TODO: since we don't need python 2 anymore, should we move testdata/python3/astroid to testdata/astroid?
+  return os.path.join(os.path.dirname(__file__), "testdata", "python3", *path_parts)
 
 def read_fixture(*path_parts):
   with io.open(get_fixture_path(*path_parts), "r", newline="\n") as f:
@@ -92,11 +92,6 @@ class MarkChecker(object):
           util.is_stmt(node) or
           util.is_expr(node) or
           util.is_module(node)):
-        continue
-
-      # await is not allowed outside async functions below 3.7
-      # parsing again would give a syntax error
-      if 'await' in text and 'async def' not in text and sys.version_info < (3, 7):
         continue
 
       # `elif:` is really just `else: if:` to the AST,
