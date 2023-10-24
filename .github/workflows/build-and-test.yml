@@ -96,7 +96,7 @@ jobs:
 
       - name: Mypy testing for Python 2
         run: |
-          python -m mypy --py2 asttokens  
+          python -m mypy --py2 asttokens
 
   finish:
     needs: test
