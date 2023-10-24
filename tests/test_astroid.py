@@ -11,6 +11,7 @@ from . import test_mark_tokens
 class TestAstroid(test_mark_tokens.TestMarkTokens):
 
   is_astroid_test = True
+  astroid_version = int(astroid.__version__.split('.')[0])
   module = astroid
 
   nodes_classes = astroid_node_classes.NodeNG
