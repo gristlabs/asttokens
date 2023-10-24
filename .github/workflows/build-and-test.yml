@@ -83,7 +83,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          coverage run --branch --include='asttokens/*' -m pytest --junitxml=./rspec.xml
+          coverage run --branch --include='asttokens/*' -m pytest -n auto --junitxml=./rspec.xml
           coverage report -m
 
       - name: Collect coverage results
