@@ -11,4 +11,11 @@ except Exception:
     astroid_node_classes = None
     NodeNG = None
 
-__all__ = ["astroid_node_classes", "NodeNG"]
+BaseContainer = getattr(
+  astroid_node_classes,
+  'BaseContainer',
+  getattr(astroid_node_classes, '_BaseContainer', None),
+)
+
+
+__all__ = ["astroid_node_classes", "NodeNG", "BaseContainer"]
