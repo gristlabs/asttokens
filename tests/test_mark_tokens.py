@@ -507,7 +507,7 @@ bar = ('x y z'   # comment2
       @deco3()
       def g(x):
         pass
-      
+
       @deco4
       class C:
         pass
