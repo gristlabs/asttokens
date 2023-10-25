@@ -21,7 +21,6 @@ from ast import Module
 from typing import Iterable, Iterator, List, Optional, Tuple, Any, cast, TYPE_CHECKING
 
 import six
-from six.moves import xrange  # pylint: disable=redefined-builtin
 
 from .line_numbers import LineNumbers
 from .util import (
@@ -33,18 +32,17 @@ if TYPE_CHECKING:  # pragma: no cover
   from .util import AstNode, TokenInfo
 
 
-class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
+class ASTTextBase(metaclass=abc.ABCMeta):
   def __init__(self, source_text, filename):
-    # type: (Any, str) -> None
-    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
+    # type: (str, str) -> None
     self._filename = filename
 
     # Decode source after parsing to let Python 2 handle coding declarations.
     # (If the encoding was not utf-8 compatible, then even if it parses correctly,
     # we'll fail with a unicode error here.)
-    source_text = six.ensure_text(source_text)
+    # FIXME: This is the only remaining usage for six. Do we still need this check?
+    #  If so, then we should copy the function here and remove dependency on six
+    source_text =  six.ensure_text(source_text)
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
@@ -110,9 +108,7 @@ class ASTTokens(ASTTextBase, object):
   """
 
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
-    # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
-    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    # type: (str, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
 
     super(ASTTokens, self).__init__(source_text, filename)
 
@@ -249,7 +245,7 @@ class ASTTokens(ASTTextBase, object):
     Yields all tokens in order from first_token through and including last_token. If
     include_extra is True, includes non-coding tokens such as tokenize.NL and .COMMENT.
     """
-    for i in xrange(first_token.index, last_token.index + 1):
+    for i in range(first_token.index, last_token.index + 1):
       if include_extra or not is_non_coding_token(self._tokens[i].type):
         yield self._tokens[i]
 
@@ -298,9 +294,7 @@ class ASTText(ASTTextBase, object):
   If you want to avoid this, check ``supports_tokenless(node)`` before calling ``get_text*`` methods.
   """
   def __init__(self, source_text, tree=None, filename='<unknown>'):
-    # type: (Any, Optional[Module], str) -> None
-    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+    # type: (str, Optional[Module], str) -> None
 
     super(ASTText, self).__init__(source_text, filename)
 
@@ -466,6 +460,5 @@ def supports_tokenless(node=None):
           )
         )
       )
-      and sys.version_info[:2] >= (3, 8)
       and 'pypy' not in sys.version.lower()
   )

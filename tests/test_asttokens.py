@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 import ast
-import six
 import token
 import tokenize
 import unittest
@@ -104,7 +103,7 @@ class TestASTTokens(unittest.TestCase):
     # translate correctly.
     source = "foo('фыва',a,b)\n"
     atok = asttokens.ASTTokens(source)
-    self.assertEqual([six.text_type(t) for t in atok.tokens], [
+    self.assertEqual([str(t) for t in atok.tokens], [
       "NAME:'foo'",
       "OP:'('",
       'STRING:"%s"' % repr('фыва').lstrip('u'),
@@ -146,6 +145,7 @@ class TestASTTokens(unittest.TestCase):
 
   def test_coding_declaration(self):
     """ASTTokens should be able to parse a string with a coding declaration."""
+    # TODO: figure out if the comment below is relevant
     # In Python 2, a unicode string with a coding declaration is a SyntaxError, but we should be
     # able to parse a byte string with a coding declaration (as long as its utf-8 compatible).
     atok = asttokens.ASTTokens(str("# coding: ascii\n1\n"), parse=True)

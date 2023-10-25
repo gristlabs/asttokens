@@ -9,7 +9,6 @@ import unittest
 
 import astroid
 import pytest
-import six
 
 from .context import asttokens
 from .tools import get_node_name
@@ -117,47 +116,46 @@ def test_expect_token():
     asttokens.util.expect_token(tok, token.OP)
 
 
-if six.PY3:
-  def test_combine_tokens():
-    from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
-    from asttokens.util import combine_tokens, patched_generate_tokens
+def test_combine_tokens():
+  from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
+  from asttokens.util import combine_tokens, patched_generate_tokens
 
-    text = "℘·2=1"
-    original_tokens = []
-    for tok in generate_tokens(io.StringIO(text).readline):
-      original_tokens.append(tok)
-      if tok.type == OP:
-        break
+  text = "℘·2=1"
+  original_tokens = []
+  for tok in generate_tokens(io.StringIO(text).readline):
+    original_tokens.append(tok)
+    if tok.type == OP:
+      break
 
-    correct_tokens = [
-      TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+  correct_tokens = [
+    TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+    TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
+  ]
+  if sys.version_info >= (3, 12):
+    # The tokenizing bug was fixed in 3.12, so the original tokens are correct,
+    # rather than starting with false ERRORTOKENs.
+    assert original_tokens == correct_tokens
+  else:
+    assert original_tokens == [
+      TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+      TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
+      TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
       TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
     ]
-    if sys.version_info >= (3, 12):
-      # The tokenizing bug was fixed in 3.12, so the original tokens are correct,
-      # rather than starting with false ERRORTOKENs.
-      assert original_tokens == correct_tokens
-    else:
-      assert original_tokens == [
-        TokenInfo(ERRORTOKEN, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
-        TokenInfo(ERRORTOKEN, string='·', start=(1, 1), end=(1, 2), line='℘·2=1'),
-        TokenInfo(NUMBER, string='2', start=(1, 2), end=(1, 3), line='℘·2=1'),
-        TokenInfo(OP, string='=', start=(1, 3), end=(1, 4), line='℘·2=1'),
-      ]
-      assert combine_tokens(original_tokens[:1]) == [
-        TokenInfo(NAME, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
-      ]
-      assert combine_tokens(original_tokens[:2]) == [
-        TokenInfo(NAME, string='℘·', start=(1, 0), end=(1, 2), line='℘·2=1'),
-      ]
-      assert combine_tokens(original_tokens[:3]) == [
-        TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
-      ]
-
-    assert list(patched_generate_tokens(iter(original_tokens))) == correct_tokens
-    assert list(patched_generate_tokens(iter(original_tokens[:-1]))) == [
+    assert combine_tokens(original_tokens[:1]) == [
+      TokenInfo(NAME, string='℘', start=(1, 0), end=(1, 1), line='℘·2=1'),
+    ]
+    assert combine_tokens(original_tokens[:2]) == [
+      TokenInfo(NAME, string='℘·', start=(1, 0), end=(1, 2), line='℘·2=1'),
+    ]
+    assert combine_tokens(original_tokens[:3]) == [
       TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
     ]
+
+  assert list(patched_generate_tokens(iter(original_tokens))) == correct_tokens
+  assert list(patched_generate_tokens(iter(original_tokens[:-1]))) == [
+    TokenInfo(NAME, string='℘·2', start=(1, 0), end=(1, 3), line='℘·2=1'),
+  ]
 
 
 if __name__ == "__main__":
