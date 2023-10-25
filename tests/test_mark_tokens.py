@@ -157,7 +157,7 @@ b +     # line3
   # change reduces the count by a lot, it's a red flag that the test is now covering fewer nodes.
   expect_tested_nodes = {
     #                                   AST                  | Astroid
-    #                                   Py2   Py3  Py3+slice | Py2   Py3+v2 Py3+v2
+    #                                   Py2   Py3  Py3+slice | Py2   Py3+v2 Py3+v3
     'astroid/__init__.py':            ( 4,    4,   4,          4,    4,     4,   ),
     'astroid/absimport.py':           ( 4,    3,   3,          4,    3,     3,   ),
     'astroid/all.py':                 ( 21,   23,  23,         21,   23,    23,  ),
