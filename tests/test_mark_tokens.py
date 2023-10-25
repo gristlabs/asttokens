@@ -32,6 +32,7 @@ class TestMarkTokens(unittest.TestCase):
   # the `astroid` library. The latter derives TestAstroid class from TestMarkTokens. For checks
   # that differ between them, .is_astroid_test allows to distinguish.
   is_astroid_test = False
+  astroid_version = None  # type: int | None
   module = ast
 
   def create_mark_checker(self, source, verify=True):
@@ -140,9 +141,14 @@ b +     # line3
     tested_nodes = m.verify_all_nodes(self)
 
     exp_index = (0 if six.PY2 else 1) + (3 if self.is_astroid_test else 0)
-    # For ast on Python 3.9, slices are expressions, we handle them and test them.
-    if not self.is_astroid_test and issubclass(ast.Slice, ast.expr):
-      exp_index += 1
+    if not self.is_astroid_test:
+      # For ast on Python 3.9, slices are expressions, we handle them and test them.
+      if issubclass(ast.Slice, ast.expr):
+        exp_index += 1
+    else:
+      # Astroid v3 has some changes from v2
+      if self.astroid_version == 3:
+        exp_index += 1
     exp_tested_nodes = self.expect_tested_nodes[path][exp_index]
     self.assertEqual(tested_nodes, exp_tested_nodes)
 
@@ -151,20 +157,20 @@ b +     # line3
   # change reduces the count by a lot, it's a red flag that the test is now covering fewer nodes.
   expect_tested_nodes = {
     #                                   AST                  | Astroid
-    #                                   Py2   Py3  Py3+slice | Py2   Py3
-    'astroid/__init__.py':            ( 4,    4,   4,          4,    4,   ),
-    'astroid/absimport.py':           ( 4,    3,   3,          4,    3,   ),
-    'astroid/all.py':                 ( 21,   23,  23,         21,   23,  ),
-    'astroid/clientmodule_test.py':   ( 75,   67,  67,         69,   69,  ),
-    'astroid/descriptor_crash.py':    ( 30,   28,  28,         30,   30,  ),
-    'astroid/email.py':               ( 3,    3,   3,          1,    1,   ),
-    'astroid/format.py':              ( 64,   61,  61,         62,   62,  ),
-    'astroid/module.py':              ( 185,  174, 174,        171,  171, ),
-    'astroid/module2.py':             ( 248,  253, 255,        240,  253, ),
-    'astroid/noendingnewline.py':     ( 57,   59,  59,         57,   63,  ),
-    'astroid/notall.py':              ( 15,   17,  17,         15,   17,  ),
-    'astroid/recursion.py':           ( 6,    6,   6,          4,    4,   ),
-    'astroid/suppliermodule_test.py': ( 20,   17,  17,         18,   18,  ),
+    #                                   Py2   Py3  Py3+slice | Py2   Py3+v2 Py3+v3
+    'astroid/__init__.py':            ( 4,    4,   4,          4,    4,     4,   ),
+    'astroid/absimport.py':           ( 4,    3,   3,          4,    3,     3,   ),
+    'astroid/all.py':                 ( 21,   23,  23,         21,   23,    23,  ),
+    'astroid/clientmodule_test.py':   ( 75,   67,  67,         69,   69,    69,  ),
+    'astroid/descriptor_crash.py':    ( 30,   28,  28,         30,   30,    30,  ),
+    'astroid/email.py':               ( 3,    3,   3,          1,    1,     1,   ),
+    'astroid/format.py':              ( 64,   61,  61,         62,   62,    62,  ),
+    'astroid/module.py':              ( 185,  174, 174,        171,  171,   173, ),
+    'astroid/module2.py':             ( 248,  253, 255,        240,  253,   253, ),
+    'astroid/noendingnewline.py':     ( 57,   59,  59,         57,   63,    63,  ),
+    'astroid/notall.py':              ( 15,   17,  17,         15,   17,    17,  ),
+    'astroid/recursion.py':           ( 6,    6,   6,          4,    4,     4,   ),
+    'astroid/suppliermodule_test.py': ( 20,   17,  17,         18,   18,    18,  ),
   }
 
   # This set of methods runs verifications for the variety of syntax constructs used in the
