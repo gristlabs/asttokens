@@ -81,10 +81,16 @@ jobs:
         # pypy < 3.8 very doesn't work
         # 2.7 is tested separately in mypy-py2, as we need to run mypy under Python 3.x
 
-      - name: Test with pytest
+      - name: Fast tests with coverage
         run: |
-          pytest --cov -n auto --junitxml=./rspec.xml
+          pytest --cov -n auto -m "not slow"
           coverage report -m
+
+      - name: Slow tests without coverage
+        # Python 2.7 doesn't have any slow tests
+        if: ${{ !contains(fromJson('["2.7", "pypy-2.7"]'), matrix.python-version) }}
+        run: |
+          pytest -n auto -m slow
 
       - name: Collect coverage results
         env:

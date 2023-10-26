@@ -5,6 +5,7 @@ import ast
 import inspect
 import io
 import os
+import pytest
 import re
 import sys
 import textwrap
@@ -630,6 +631,7 @@ j  # not a complex number, just a name
     self.create_mark_checker(source)
 
   if six.PY3:
+    @pytest.mark.slow
     def test_sys_modules(self):
       """
       Verify all nodes on source files obtained from sys.modules.
