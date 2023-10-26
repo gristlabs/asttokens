@@ -83,7 +83,7 @@ jobs:
 
       - name: Test with pytest
         run: |
-          pytest --cov -n auto --junitxml=./rspec.xml
+          pytest --cov -n 4 --junitxml=./rspec.xml
           coverage report -m
 
       - name: Collect coverage results
