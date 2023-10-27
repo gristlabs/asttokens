@@ -317,6 +317,7 @@ bar = ('x y z'   # comment2
       for source in (
         '(f"He said his name is {name!r}.",)',
         "f'{function(kwarg=24)}'",
+        '''(f'{f"""{f"{val!r}"}"""}')''',
         'a = f"""result: {value:{width}.{precision}}"""',
         """[f"abc {a['x']} def"]""",
         "def t():\n  return f'{function(kwarg=24)}'"):
@@ -339,6 +340,39 @@ bar = ('x y z'   # comment2
             "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
         })
 
+  if sys.version_info >= (3, 12):
+    def test_fstrings_3_12_plus(self):
+        m = self.create_mark_checker(
+          'x = (f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}.",)',
+        )
+
+        self.assertEqual(m.view_nodes_at(1, 6), {
+            'JoinedStr:f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}."',
+        })
+
+        m.verify_all_nodes(self)
+
+  def test_bytes_smoke(self):
+    const = 'Const' if self.is_astroid_test else (
+        'Constant'
+        if sys.version_info >= (3, 8) or six.PY2
+        else 'Bytes'
+    )
+
+    for source in (
+      'b"123abd"',
+      r"b'\x12\x3a\xbc'",
+    ):
+      expected = {"Module:" + source}
+      if six.PY3 or not self.is_astroid_test:
+        expected |= {
+          const + ":" + source,
+          "Expr:" + source,
+      }
+
+      m = self.create_mark_checker(source)
+      self.assertEqual(m.view_nodes_at(1, 1), expected)
+      m.verify_all_nodes(self)
 
   def test_splat(self):
     # See https://bitbucket.org/plas/thonny/issues/151/debugger-crashes-when-encountering-a-splat
