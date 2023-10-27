@@ -43,7 +43,6 @@ jobs:
             astroid-version: '<3'
 
     env:
-      ASTTOKENS_SLOW_TESTS: 1
       COVERALLS_PARALLEL: true
 
     steps:

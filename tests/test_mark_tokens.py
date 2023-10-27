@@ -635,15 +635,14 @@ j  # not a complex number, just a name
     def test_sys_modules(self):
       """
       Verify all nodes on source files obtained from sys.modules.
+
       This can take a long time as there are many modules,
-      so it only tests all modules if the environment variable
-      ASTTOKENS_SLOW_TESTS has been set.
+      so is marked as a slow test and must be explicitly selected
+      for running.
       """
       from .test_astroid import AstroidTreeException
 
       modules = list(sys.modules.values())
-      if not os.environ.get('ASTTOKENS_SLOW_TESTS'):
-        modules = modules[:20]
 
       start = time()
       for module in modules:
