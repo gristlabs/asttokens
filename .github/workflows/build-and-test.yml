@@ -26,6 +26,8 @@ jobs:
           - pypy-3.6
           - pypy-3.7
           - pypy-3.8
+          - pypy-3.9
+          - pypy-3.10
         astroid-version:
           - ''
         include:
@@ -40,6 +42,8 @@ jobs:
           - python-version: '3.11'
             astroid-version: '<3'
           - python-version: '3.12'
+            astroid-version: '<3'
+          - python-version: 'pypy-3.10'
             astroid-version: '<3'
 
     env:
