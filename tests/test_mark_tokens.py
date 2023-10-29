@@ -342,6 +342,8 @@ bar = ('x y z'   # comment2
 
   if sys.version_info >= (3, 12):
     def test_fstrings_3_12_plus(self):
+        const = 'Const' if self.is_astroid_test else 'Constant'
+
         m = self.create_mark_checker(
           'x = (f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}.",)',
         )
@@ -349,6 +351,19 @@ bar = ('x y z'   # comment2
         self.assertEqual(m.view_nodes_at(1, 6), {
             'JoinedStr:f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}."',
         })
+
+        # Nodes within an f-string don't have tokens attached so we don't get
+        # their text ranges.
+        node, = m.get_nodes_at(1, 6)
+        self.assertEqual(
+          [
+            const + ':',
+            'FormattedValue:',
+            const + ':',
+          ],
+          [m.view_node(x) for x in node.values],
+          "Wrong children within JoinedStr",
+        )
 
         m.verify_all_nodes(self)
 
