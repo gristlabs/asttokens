@@ -373,8 +373,11 @@ bar = ('x y z'   # comment2
             'JoinedStr:f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}."',
         })
 
-        # Nodes within an f-string don't have tokens attached so we don't get
-        # their text ranges.
+        # TODO: Nodes within an f-string currently don't have tokens attached so
+        # we don't get their text ranges (hence no text after the colon in the
+        # below assertion). Ideally we should update the mark-tokens logic to
+        # attach tokens to the nodes within f-strings, at which point this test
+        # should be updated with the relevant node texts.
         node, = m.get_nodes_at(1, 6)
         self.assertEqual(
           [
