@@ -307,6 +307,27 @@ bar = ('x y z'   # comment2
           "%s:%s" % ("AssignName" if self.is_astroid_test else "Name", source.split("=")[0]),
         })
 
+    def test_bytes_smoke(self):
+      const = 'Const' if self.is_astroid_test else (
+          'Constant'
+          if sys.version_info >= (3, 8)
+          else 'Bytes'
+      )
+
+      for source in (
+        'b"123abd"',
+        r"b'\x12\x3a\xbc'",
+      ):
+        expected = {
+          "Module:" + source,
+          const + ":" + source,
+          "Expr:" + source,
+        }
+
+        m = self.create_mark_checker(source)
+        self.assertEqual(m.view_nodes_at(1, 1), expected)
+        m.verify_all_nodes(self)
+
 
   if sys.version_info[0:2] >= (3, 6):
     # f-strings are only supported in Python36. We don't handle them fully, for a couple of
@@ -366,28 +387,6 @@ bar = ('x y z'   # comment2
         )
 
         m.verify_all_nodes(self)
-
-  def test_bytes_smoke(self):
-    const = 'Const' if self.is_astroid_test else (
-        'Constant'
-        if sys.version_info >= (3, 8) or six.PY2
-        else 'Bytes'
-    )
-
-    for source in (
-      'b"123abd"',
-      r"b'\x12\x3a\xbc'",
-    ):
-      expected = {"Module:" + source}
-      if six.PY3 or not self.is_astroid_test:
-        expected |= {
-          const + ":" + source,
-          "Expr:" + source,
-      }
-
-      m = self.create_mark_checker(source)
-      self.assertEqual(m.view_nodes_at(1, 1), expected)
-      m.verify_all_nodes(self)
 
   def test_splat(self):
     # See https://bitbucket.org/plas/thonny/issues/151/debugger-crashes-when-encountering-a-splat
