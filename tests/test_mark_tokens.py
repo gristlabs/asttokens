@@ -307,6 +307,27 @@ bar = ('x y z'   # comment2
           "%s:%s" % ("AssignName" if self.is_astroid_test else "Name", source.split("=")[0]),
         })
 
+    def test_bytes_smoke(self):
+      const = 'Const' if self.is_astroid_test else (
+          'Constant'
+          if sys.version_info >= (3, 8)
+          else 'Bytes'
+      )
+
+      for source in (
+        'b"123abd"',
+        r"b'\x12\x3a\xbc'",
+      ):
+        expected = {
+          "Module:" + source,
+          const + ":" + source,
+          "Expr:" + source,
+        }
+
+        m = self.create_mark_checker(source)
+        self.assertEqual(m.view_nodes_at(1, 1), expected)
+        m.verify_all_nodes(self)
+
 
   if sys.version_info[0:2] >= (3, 6):
     # f-strings are only supported in Python36. We don't handle them fully, for a couple of
@@ -317,6 +338,7 @@ bar = ('x y z'   # comment2
       for source in (
         '(f"He said his name is {name!r}.",)',
         "f'{function(kwarg=24)}'",
+        '''(f'{f"""{f"{val!r}"}"""}')''',
         'a = f"""result: {value:{width}.{precision}}"""',
         """[f"abc {a['x']} def"]""",
         "def t():\n  return f'{function(kwarg=24)}'"):
@@ -339,6 +361,35 @@ bar = ('x y z'   # comment2
             "JoinedStr:'x y z'   # comment2\n       'a b c'   # comment3\n       f'u v w'"
         })
 
+  if sys.version_info >= (3, 12):
+    def test_fstrings_3_12_plus(self):
+        const = 'Const' if self.is_astroid_test else 'Constant'
+
+        m = self.create_mark_checker(
+          'x = (f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}.",)',
+        )
+
+        self.assertEqual(m.view_nodes_at(1, 6), {
+            'JoinedStr:f"Wobble {f"{func(kwarg=f"{boo!r}")}"!r}."',
+        })
+
+        # TODO: Nodes within an f-string currently don't have tokens attached so
+        # we don't get their text ranges (hence no text after the colon in the
+        # below assertion). Ideally we should update the mark-tokens logic to
+        # attach tokens to the nodes within f-strings, at which point this test
+        # should be updated with the relevant node texts.
+        node, = m.get_nodes_at(1, 6)
+        self.assertEqual(
+          [
+            const + ':',
+            'FormattedValue:',
+            const + ':',
+          ],
+          [m.view_node(x) for x in node.values],
+          "Wrong children within JoinedStr",
+        )
+
+        m.verify_all_nodes(self)
 
   def test_splat(self):
     # See https://bitbucket.org/plas/thonny/issues/151/debugger-crashes-when-encountering-a-splat
