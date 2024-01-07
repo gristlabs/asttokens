@@ -134,7 +134,7 @@ class ASTTokens(ASTTextBase, object):
     """
     Given the root of the AST or Astroid tree produced from source_text, visits all nodes marking
     them with token and position information by adding ``.first_token`` and
-    ``.last_token``attributes. This is done automatically in the constructor when ``parse`` or
+    ``.last_token`` attributes. This is done automatically in the constructor when ``parse`` or
     ``tree`` arguments are set, but may be used manually with a separate AST or Astroid tree.
     """
     # The hard work of this class is done by MarkTokens
