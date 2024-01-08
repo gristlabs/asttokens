@@ -848,8 +848,11 @@ if 0:
     """
     # If text is indented, it's a statement, and we need to put in a scope for indents to be valid
     # (using textwrap.dedent is insufficient because some lines may not indented, e.g. comments or
-    # multiline strings). If text is an expression but has newlines, we parenthesize it to make it
-    # parsable.
+    # multiline strings).
+    # If text is an expression but:
+    #   - has newlines
+    #   - or is an assignment expression
+    # we parenthesize it to make it parsable.
     # For expressions and statements, we add a dummy statement '_' before it because if it's just a
     # string contained in an astroid.Const or astroid.Expr it will end up in the doc attribute and be
     # a pain to extract for comparison
@@ -863,7 +866,9 @@ if 0:
     if util.is_slice(node):
       return self.module.parse('a[' + text + ']').body[0].value.slice
     if util.is_expr(node):
-      return self.module.parse('_\n(' + text + ')').body[1].value
+      if '\n' in text or node.__class__.__name__ == 'NamedExpr':
+        text = '(' + text + ')'
+      return self.module.parse('_\n' + text).body[1].value
     if util.is_module(node):
       return self.module.parse(text)
     return self.module.parse('_\n' + text).body[1]
