@@ -17,6 +17,7 @@ jobs:
           - '3.10'
           - 3.11
           - 3.12
+          - 3.13
           # As per https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#pypy list of versions
           - pypy-3.8
           - pypy-3.9
@@ -35,6 +36,8 @@ jobs:
           - python-version: '3.11'
             astroid-version: '<3'
           - python-version: '3.12'
+            astroid-version: '<3'
+          - python-version: '3.13'
             astroid-version: '<3'
           - python-version: 'pypy-3.10'
             astroid-version: '<3'
