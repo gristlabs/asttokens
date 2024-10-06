@@ -39,10 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
   AstNode = Union[EnhancedAST, NodeNG]
 
-  if sys.version_info[0] == 2:
-    TokenInfo = Tuple[int, str, Tuple[int, int], Tuple[int, int], str]
-  else:
-    TokenInfo = tokenize.TokenInfo
+  TokenInfo = tokenize.TokenInfo
 
 
 def token_repr(tok_type, string):
@@ -341,7 +338,7 @@ def replace(text, replacements):
   return ''.join(parts)
 
 
-class NodeMethods(object):
+class NodeMethods:
   """
   Helper to get `visit_{node_type}` methods given a node's class and cache the results.
   """
@@ -363,14 +360,7 @@ class NodeMethods(object):
     return method
 
 
-if sys.version_info[0] == 2:
-  # Python 2 doesn't support non-ASCII identifiers, and making the real patched_generate_tokens support Python 2
-  # means working with raw tuples instead of tokenize.TokenInfo namedtuples.
-  def patched_generate_tokens(original_tokens):
-    # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
-    return iter(original_tokens)
-else:
-  def patched_generate_tokens(original_tokens):
+def patched_generate_tokens(original_tokens):
     # type: (Iterable[TokenInfo]) -> Iterator[TokenInfo]
     """
     Fixes tokens yielded by `tokenize.generate_tokens` to handle more non-ASCII characters in identifiers.
@@ -395,7 +385,7 @@ else:
     for combined_token in combine_tokens(group):
       yield combined_token
 
-  def combine_tokens(group):
+def combine_tokens(group):
     # type: (List[tokenize.TokenInfo]) -> List[tokenize.TokenInfo]
     if not any(tok.type == tokenize.ERRORTOKEN for tok in group) or len({tok.line for tok in group}) != 1:
       return group

@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function
-
 import astroid
 
 from asttokens import ASTTokens
