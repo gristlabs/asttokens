@@ -30,7 +30,7 @@ pygments==2.16.1
     # via sphinx
 readthedocs-sphinx-search==0.3.2
     # via -r requirements.in
-requests==2.31.0
+requests==2.32.2
     # via sphinx
 six==1.16.0
     # via -r requirements.in
