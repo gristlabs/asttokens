@@ -19,8 +19,6 @@ import token
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 
-import six
-
 from . import util
 from .asttokens import ASTTokens
 from .util import AstConstant
@@ -185,16 +183,6 @@ class MarkTokens:
     def visit_listcomp(self, node, first_token, last_token):
       # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
       return self.handle_comp('[', node, first_token, last_token)
-
-  if six.PY2:
-    # We shouldn't do this on PY3 because its SetComp/DictComp already have a correct start.
-    def visit_setcomp(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      return self.handle_comp('{', node, first_token, last_token)
-
-    def visit_dictcomp(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      return self.handle_comp('{', node, first_token, last_token)
 
   def visit_comprehension(self,
                           node,  # type: AstNode
@@ -435,7 +423,7 @@ class MarkTokens:
     assert isinstance(node, AstConstant) or isinstance(node, nc.Const)
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
-    elif isinstance(node.value, (six.text_type, six.binary_type)):
+    elif isinstance(node.value, (str, bytes)):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
@@ -472,13 +460,6 @@ class MarkTokens:
       colon = self._code.find_token(last_token, token.OP, ':')
       first_token = last_token = self._code.prev_token(colon)
     return (first_token, last_token)
-
-  if six.PY2:
-    # No need for this on Python3, which already handles 'with' nodes correctly.
-    def visit_with(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      first = self._code.find_token(first_token, token.NAME, 'with', reverse=True)
-      return (first, last_token)
 
   # Async nodes should typically start with the word 'async'
   # but Python < 3.7 doesn't put the col_offset there

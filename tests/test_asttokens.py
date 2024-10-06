@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import ast
-import six
 import token
 import tokenize
 import unittest
@@ -103,7 +102,7 @@ class TestASTTokens(unittest.TestCase):
     # translate correctly.
     source = "foo('фыва',a,b)\n"
     atok = asttokens.ASTTokens(source)
-    self.assertEqual([six.text_type(t) for t in atok.tokens], [
+    self.assertEqual([str(t) for t in atok.tokens], [
       "NAME:'foo'",
       "OP:'('",
       'STRING:"%s"' % repr('фыва').lstrip('u'),

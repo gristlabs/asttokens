@@ -32,8 +32,6 @@ readthedocs-sphinx-search==0.3.2
     # via -r requirements.in
 requests==2.31.0
     # via sphinx
-six==1.16.0
-    # via -r requirements.in
 snowballstemmer==2.2.0
     # via sphinx
 sphinx==6.2.1

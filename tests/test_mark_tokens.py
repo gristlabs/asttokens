@@ -13,7 +13,6 @@ import unittest
 from time import time
 
 import astroid
-import six
 from asttokens import util, ASTTokens
 
 from . import tools
@@ -139,7 +138,7 @@ b +     # line3
     m = self.create_mark_checker(source, verify=False)
     tested_nodes = m.verify_all_nodes(self)
 
-    exp_index = (0 if six.PY2 else 1) + (3 if self.is_astroid_test else 0)
+    exp_index = 1 + (3 if self.is_astroid_test else 0)
     if not self.is_astroid_test:
       # For ast on Python 3.9, slices are expressions, we handle them and test them.
       if issubclass(ast.Slice, ast.expr):
@@ -280,7 +279,7 @@ bar = ('x y z'   # comment2
     # verify_all_nodes doesn't work on Python 2 because the print() call parsed in isolation
     # is viewed as a Print node since it doesn't see the future import
     source = tools.read_fixture('astroid/nonregr.py')
-    m = self.create_mark_checker(source, verify=six.PY3)
+    m = self.create_mark_checker(source, verify=True)
 
     # Line 16 is: [indent 8] print(v.get('yo'))
     self.assertEqual(m.view_nodes_at(16, 8),
@@ -290,8 +289,7 @@ bar = ('x y z'   # comment2
   # To make sure we can handle various hard cases, we include tests for issues reported for a
   # similar project here: https://bitbucket.org/plas/thonny
 
-  if not six.PY2:
-    def test_nonascii(self):
+  def test_nonascii(self):
       # Test of https://bitbucket.org/plas/thonny/issues/162/weird-range-marker-crash-with-non-ascii
       # Only on PY3 because Py2 doesn't support unicode identifiers.
       for source in (
@@ -400,8 +398,7 @@ bar = ('x y z'   # comment2
     m = self.create_mark_checker(source)
     self.assertEqual(m.view_nodes_at(5, 0),
         { "Expr:print_all(*arr)", "Call:print_all(*arr)", "Name:print_all" })
-    if not six.PY2 or self.is_astroid_test:
-      self.assertEqual(m.view_nodes_at(5, 10), { "Starred:*arr" })
+    self.assertEqual(m.view_nodes_at(5, 10), { "Starred:*arr" })
     self.assertEqual(m.view_nodes_at(5, 11), { "Name:arr" })
 
 
@@ -419,16 +416,12 @@ bar = ('x y z'   # comment2
     m = self.create_mark_checker(source)
     name_a = 'AssignName:a' if self.is_astroid_test else 'Name:a'
     const_true = ('Const:True' if self.is_astroid_test else
-                  'Name:True' if six.PY2 else
                   'Constant:True')
     self.assertEqual(m.view_nodes_at(1, 0),
                      {name_a, "Assign:a = True if True else False", "Module:" + source})
     self.assertEqual(m.view_nodes_at(1, 4),
                      {const_true, 'IfExp:True if True else False'})
-    if six.PY2:
-      self.assertEqual(m.view_nodes_at(2, 0), {"Print:print(a)"})
-    else:
-      self.assertEqual(m.view_nodes_at(2, 0), {"Name:print", "Call:print(a)", "Expr:print(a)"})
+    self.assertEqual(m.view_nodes_at(2, 0), {"Name:print", "Call:print(a)", "Expr:print(a)"})
 
   def test_calling_lambdas(self):
     # See https://bitbucket.org/plas/thonny/issues/96/calling-lambdas-crash-the-debugger
@@ -502,8 +495,7 @@ bar = ('x y z'   # comment2
     self.assertEqual(m.view_nodes_at(2, 0), {'Delete:del x[4]'})
     self.assertEqual(m.view_nodes_at(2, 4), {'Name:x', 'Subscript:x[4]'})
 
-  if not six.PY2:
-    def test_bad_tokenless_types(self):
+  def test_bad_tokenless_types(self):
       # Cases where _get_text_positions_tokenless is incorrect in 3.8.
       source = textwrap.dedent("""
         def foo(*, name: str):  # keyword-only argument with type annotation
@@ -513,7 +505,7 @@ bar = ('x y z'   # comment2
       """)
       self.create_mark_checker(source)
 
-    def test_return_annotation(self):
+  def test_return_annotation(self):
       # See https://bitbucket.org/plas/thonny/issues/9/range-marker-crashes-on-function-return
       source = textwrap.dedent("""
         def liida_arvud(x: int, y: int) -> int:
@@ -602,7 +594,7 @@ bar = ('x y z'   # comment2
         log(x)
       ''')
     # verification fails on Python2 which turns `with X, Y` turns into `with X: with Y`.
-    m = self.create_mark_checker(source, verify=six.PY3)
+    m = self.create_mark_checker(source, verify=True)
     self.assertEqual(m.view_nodes_at(5, 4), {
       'With:with B() as b, C() as c: log(b, c)'
     })
@@ -679,9 +671,8 @@ j  # not a complex number, just a name
     source = 'f((x)[:, 0])'
     self.create_mark_checker(source)
 
-  if six.PY3:
-    @pytest.mark.slow
-    def test_sys_modules(self):
+  @pytest.mark.slow
+  def test_sys_modules(self):
       """
       Verify all nodes on source files obtained from sys.modules.
 
@@ -735,11 +726,10 @@ j  # not a complex number, just a name
           # it's purely an astroid bug that we can safely ignore.
           continue
 
-  if six.PY3:
-    def test_dict_merge(self):
+  def test_dict_merge(self):
       self.create_mark_checker("{**{}}")
 
-    def test_async_def(self):
+  def test_async_def(self):
       self.create_mark_checker("""
 async def foo():
   pass
@@ -749,7 +739,7 @@ async def foo():
   pass
 """)
 
-    def test_async_for_and_with(self):
+  def test_async_for_and_with(self):
       # Can't verify all nodes because in < 3.7
       # async for/with outside of a function is invalid syntax
       m = self.create_mark_checker("""
@@ -760,7 +750,7 @@ async def foo():
       assert m.view_nodes_at(3, 2) == {"AsyncFor:async for x in y: pass"}
       assert m.view_nodes_at(4, 2) == {"AsyncWith:async with x as y: pass"}
 
-    def test_await(self):
+  def test_await(self):
       # Can't verify all nodes because in astroid
       # await outside of an async function is invalid syntax
       m = self.create_mark_checker("""
@@ -923,7 +913,7 @@ if 0:
       )
     else:
       # Weird bug in astroid that collapses spaces in docstrings sometimes maybe
-      if self.is_astroid_test and isinstance(t1, six.string_types):
+      if self.is_astroid_test and isinstance(t1, str):
         t1 = re.sub(r'^ +$', '', t1, flags=re.MULTILINE)
         t2 = re.sub(r'^ +$', '', t2, flags=re.MULTILINE)
 
