@@ -12,19 +12,12 @@ jobs:
       fail-fast: false
       matrix:
         python-version:
-          - 2.7
-          - 3.5
-          - 3.6
-          - 3.7
           - 3.8
           - 3.9
           - '3.10'
           - 3.11
           - 3.12
           # As per https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#pypy list of versions
-          - pypy-2.7
-          - pypy-3.6
-          - pypy-3.7
           - pypy-3.8
           - pypy-3.9
           - pypy-3.10
@@ -58,17 +51,6 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up Python 2.7
-        if: matrix.python-version == '2.7'
-        run: |
-          sudo apt-get update
-          sudo apt-get install python2.7 -y
-          # Get everything to use this new Python as the default.
-          curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
-          sudo python2.7 get-pip.py
-          sudo ln -sf /usr/bin/pip2 /usr/bin/pip
-          sudo ln -sf /usr/bin/python2.7 /usr/bin/python
-
       - name: Install dependencies
         run: |
           pip install --upgrade coveralls pytest setuptools setuptools_scm pep517
@@ -79,10 +61,6 @@ jobs:
           # Not an exact mypy version, as we need 0.942 for pypy-3.8 support, but it's not available on 3.5
           pip install types-six "mypy>=0.910,<=0.942"
           python -m mypy asttokens tests/*.py
-        # fromJson because https://github.community/t/passing-an-array-literal-to-contains-function-causes-syntax-error/17213/3
-        if: ${{ !contains(fromJson('["2.7", "pypy-2.7", "pypy-3.6", "pypy-3.7"]'), matrix.python-version) }}
-        # pypy < 3.8 very doesn't work
-        # 2.7 is tested separately in mypy-py2, as we need to run mypy under Python 3.x
 
       - name: Fast tests with coverage
         run: |
@@ -90,8 +68,6 @@ jobs:
           coverage report -m
 
       - name: Slow tests without coverage
-        # Python 2.7 doesn't have any slow tests
-        if: ${{ !contains(fromJson('["2.7", "pypy-2.7"]'), matrix.python-version) }}
         run: |
           pytest -n auto -m slow
 
@@ -101,27 +77,6 @@ jobs:
         run: |
           pip3 install --upgrade coveralls
           python3 -m coveralls --service=github
-
-  # Can't run mypy on Python 2.7, but can run it in Python 2 mode
-  mypy-py2:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.9
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade setuptools setuptools_scm pep517
-          pip install .[test]
-          pip install types-six==1.16.10 mypy[python2]==0.910
-
-      - name: Mypy testing for Python 2
-        run: |
-          python -m mypy --py2 asttokens
 
   finish:
     needs: test
