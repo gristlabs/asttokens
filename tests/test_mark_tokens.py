@@ -303,7 +303,7 @@ bar = ('x y z'   # comment2
           "%s:%s" % ("AssignName" if self.is_astroid_test else "Name", source.split("=")[0]),
         })
 
-    def test_bytes_smoke(self):
+  def test_bytes_smoke(self):
       const = 'Const' if self.is_astroid_test else (
           'Constant'
           if sys.version_info >= (3, 8)
