@@ -23,7 +23,6 @@ from ast import Module, expr, AST
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
 import astroid
-from six import iteritems
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -139,7 +138,7 @@ def iter_children_astroid(node, include_joined_str=False):
   return node.get_children()
 
 
-SINGLETONS = {c for n, c in iteritems(ast.__dict__) if isinstance(c, type) and
+SINGLETONS = {c for n, c in ast.__dict__.items() if isinstance(c, type) and
               issubclass(c, (ast.expr_context, ast.boolop, ast.operator, ast.unaryop, ast.cmpop))}
 
 
@@ -165,9 +164,9 @@ def iter_children_ast(node, include_joined_str=False):
       yield child
 
 
-stmt_class_names = {n for n, c in iteritems(ast.__dict__)
+stmt_class_names = {n for n, c in ast.__dict__.items()
                     if isinstance(c, type) and issubclass(c, ast.stmt)}
-expr_class_names = ({n for n, c in iteritems(ast.__dict__)
+expr_class_names = ({n for n, c in ast.__dict__.items()
                     if isinstance(c, type) and issubclass(c, ast.expr)} |
                     {'AssignName', 'DelName', 'Const', 'AssignAttr', 'DelAttr'})
 

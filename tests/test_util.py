@@ -7,7 +7,6 @@ import unittest
 
 import astroid
 import pytest
-import six
 
 from .context import asttokens
 from .tools import get_node_name
@@ -115,8 +114,7 @@ def test_expect_token():
     asttokens.util.expect_token(tok, token.OP)
 
 
-if six.PY3:
-  def test_combine_tokens():
+def test_combine_tokens():
     from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
     from asttokens.util import combine_tokens, patched_generate_tokens
 
