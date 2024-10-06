@@ -22,6 +22,7 @@ from abc import ABCMeta
 from ast import Module, expr, AST
 from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
+import astroid
 from six import iteritems
 
 
@@ -196,6 +197,24 @@ def is_joined_str(node):
   # At the moment, nodes below JoinedStr have wrong line/col info, and trying to process them only
   # leads to errors.
   return node.__class__.__name__ == 'JoinedStr'
+
+
+def is_expr_stmt(node):
+  # type: (AstNode) -> bool
+  """Returns whether node is an `Expr` node, which is a statement that is an expression."""
+  return node.__class__.__name__ == 'Expr'
+
+
+def is_constant(node):
+  # type: (AstNode) -> bool
+  """Returns whether node is a Constant node."""
+  return isinstance(node, (ast.Constant, astroid.Const))
+
+
+def is_ellipsis(node):
+  # type: (AstNode) -> bool
+  """Returns whether node is an Ellipsis node."""
+  return is_constant(node) and node.value is Ellipsis  # type: ignore
 
 
 def is_starred(node):

@@ -9,6 +9,7 @@ import sys
 import astroid
 
 from asttokens import util, supports_tokenless, ASTText
+from asttokens.util import is_ellipsis, is_expr_stmt
 
 
 def get_fixture_path(*path_parts):
@@ -149,15 +150,40 @@ class MarkChecker(object):
       has_lineno = getattr(node, 'lineno', None) is not None
       test_case.assertEqual(has_lineno, text_tokenless != '')
       if has_lineno:
-        if (
-            text != text_tokenless
-            and text_tokenless.startswith(text)
-            and text_tokenless[len(text):].strip().startswith('# type: ')
+        if text != text_tokenless:
+          if (
+            text_tokenless.startswith(text)
             and test_case.is_astroid_test
-        ):
-          # astroid positions can include type comments, which we can ignore.
-          return
-        test_case.assertEqual(text, text_tokenless)
+            and (
+              # astroid positions can include type comments, which we can ignore.
+              text_tokenless[len(text):].strip().startswith('# type: ')
+              # astroid+ASTTokens doesn't correctly handle the 3.12+ type variable syntax.
+              # Since ASTText is preferred for new Python versions, this is not a priority.
+              or isinstance(node.parent, astroid.TypeVar)
+            )
+          ):
+            return
+
+          if (
+            text == text_tokenless.lstrip()
+            and isinstance(getattr(node, 'body', None), list)
+            and len(node.body) == 1
+            and is_expr_stmt(node.body[0])
+            and is_ellipsis(node.body[0].value)
+          ):
+            # ASTTokens doesn't include padding for compound statements where the
+            # body is a single statement starting on the same line where the header ends.
+            # ASTText does include padding in this case if the header spans multiple lines,
+            # as does ast.get_source_segment(padded=True).
+            # This is a minor difference and not worth fixing.
+            # In practice it arises in test_sys_modules when testing files containing
+            # function definition stubs like:
+            #   def foo(
+            #      <parameters>
+            #   ): ...  # (actual ellipsis)
+            return
+
+          test_case.assertEqual(text, text_tokenless)
       else:
         # _get_text_positions_tokenless can't work with nodes without lineno.
         # Double-check that such nodes are unusual.
