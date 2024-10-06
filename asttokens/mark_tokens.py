@@ -44,7 +44,7 @@ _matching_pairs_right = {
 }
 
 
-class MarkTokens(object):
+class MarkTokens:
   """
   Helper that visits all nodes in the AST tree and assigns .first_token and .last_token attributes
   to each of them. This is the heart of the token-marking logic.

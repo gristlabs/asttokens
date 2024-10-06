@@ -89,7 +89,7 @@ class ASTTextBase(six.with_metaclass(abc.ABCMeta, object)):
     return self._text[start: end]
 
 
-class ASTTokens(ASTTextBase, object):
+class ASTTokens(ASTTextBase):
   """
   ASTTokens maintains the text of Python code in several forms: as a string, as line numbers, and
   as tokens, and is used to mark and access token and position information.
@@ -284,7 +284,7 @@ class ASTTokens(ASTTextBase, object):
     return start, end
 
 
-class ASTText(ASTTextBase, object):
+class ASTText(ASTTextBase):
   """
   Supports the same ``get_text*`` methods as ``ASTTokens``,
   but uses the AST to determine the text positions instead of tokens.
