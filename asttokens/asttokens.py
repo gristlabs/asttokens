@@ -321,10 +321,6 @@ class ASTText(ASTTextBase):
     """
     Version of ``get_text_positions()`` that doesn't use tokens.
     """
-    if sys.version_info[:2] < (3, 8):  # pragma: no cover
-      # This is just for mpypy
-      raise AssertionError("This method should only be called internally after checking supports_tokenless()")
-
     if is_module(node):
       # Modules don't have position info, so just return the range of the whole text.
       # The token-using method does something different, but its behavior seems weird and inconsistent.
@@ -407,16 +403,14 @@ class ASTText(ASTTextBase):
     return self.asttokens.get_text_positions(node, padded)
 
 
-# Node types that _get_text_positions_tokenless doesn't support. Only relevant for Python 3.8+.
-_unsupported_tokenless_types = ()  # type: Tuple[str, ...]
-if sys.version_info[:2] >= (3, 8):
-  # no lineno
-  _unsupported_tokenless_types += ("arguments", "Arguments", "withitem")
-  if sys.version_info[:2] == (3, 8):
-    # _get_text_positions_tokenless works incorrectly for these types due to bugs in Python 3.8.
-    _unsupported_tokenless_types += ("arg", "Starred")
-    # no lineno in 3.8
-    _unsupported_tokenless_types += ("Slice", "ExtSlice", "Index", "keyword")
+# Node types that _get_text_positions_tokenless doesn't support.
+# These initial values are missing lineno.
+_unsupported_tokenless_types = ("arguments", "Arguments", "withitem")  # type: Tuple[str, ...]
+if sys.version_info[:2] == (3, 8):
+  # _get_text_positions_tokenless works incorrectly for these types due to bugs in Python 3.8.
+  _unsupported_tokenless_types += ("arg", "Starred")
+  # no lineno in 3.8
+  _unsupported_tokenless_types += ("Slice", "ExtSlice", "Index", "keyword")
 
 
 def supports_tokenless(node=None):
@@ -428,7 +422,6 @@ def supports_tokenless(node=None):
 
   The following cases are not supported:
 
-    - Python 3.7 and earlier
     - PyPy
     - ``ast.arguments`` / ``astroid.Arguments``
     - ``ast.withitem``
@@ -453,6 +446,5 @@ def supports_tokenless(node=None):
           )
         )
       )
-      and sys.version_info[:2] >= (3, 8)
       and 'pypy' not in sys.version.lower()
   )
