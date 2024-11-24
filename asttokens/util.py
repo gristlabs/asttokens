@@ -18,16 +18,10 @@ import io
 import sys
 import token
 import tokenize
-from ast import AST
+from abc import ABCMeta
+from ast import Module, expr, AST
 from functools import lru_cache
-from typing import (
-  TYPE_CHECKING,
-  Callable,
-  Optional,
-  Union,
-  cast,
-)
-
+from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:  # pragma: no cover
   from .astroid_compat import NodeNG
