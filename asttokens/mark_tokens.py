@@ -398,6 +398,10 @@ class MarkTokens:
         first_token = self._code.prev_token(first_token)
     return (first_token, last_token)
 
+  def visit_num(self, node, first_token, last_token):
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    return self.handle_num(node, cast(ast.Num, node).n, first_token, last_token)
+
   def visit_const(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     assert isinstance(node, ast.Constant) or isinstance(node, nc.Const)
