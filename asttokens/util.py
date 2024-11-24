@@ -194,7 +194,7 @@ CONSTANT_CLASSES = (ast.Constant,)
 try:
   from astroid import Const
   CONSTANT_CLASSES += (Const,)
-except ImportError:
+except ImportError:  # pragma: no cover
   # astroid is not available
   pass
 
