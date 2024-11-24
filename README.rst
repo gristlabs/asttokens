@@ -32,7 +32,6 @@ The API Reference is here: http://asttokens.readthedocs.io/en/latest/api-index.h
 
 Usage
 -----
-ASTTokens works with both Python2 and Python3.
 
 ASTTokens can annotate both trees built by `ast <https://docs.python.org/2/library/ast.html>`_,
 AND those built by `astroid <https://github.com/PyCQA/astroid>`_.
