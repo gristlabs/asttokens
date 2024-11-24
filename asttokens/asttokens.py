@@ -104,9 +104,6 @@ class ASTTokens(ASTTextBase):
 
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
     # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
-    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
     super(ASTTokens, self).__init__(source_text, filename)
 
     self._tree = ast.parse(source_text, filename) if parse else tree
@@ -292,9 +289,6 @@ class ASTText(ASTTextBase):
   """
   def __init__(self, source_text, tree=None, filename='<unknown>'):
     # type: (Any, Optional[Module], str) -> None
-    # FIXME: Strictly, the type of source_text is one of the six string types, but hard to specify with mypy given
-    # https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
-
     super(ASTText, self).__init__(source_text, filename)
 
     self._tree = tree
