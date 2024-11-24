@@ -21,7 +21,20 @@ import tokenize
 from abc import ABCMeta
 from ast import Module, expr, AST
 from functools import lru_cache
-from typing import Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast, Any, TYPE_CHECKING
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+    Any,
+    TYPE_CHECKING,
+    Type,
+)
 
 if TYPE_CHECKING:  # pragma: no cover
   from .astroid_compat import NodeNG
@@ -184,7 +197,7 @@ def is_expr_stmt(node):
 
 
 
-CONSTANT_CLASSES = (ast.Constant,)
+CONSTANT_CLASSES: Tuple[Type, ...] = (ast.Constant,)
 try:
   from astroid import Const
   CONSTANT_CLASSES += (Const,)
