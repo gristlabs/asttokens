@@ -21,7 +21,6 @@ from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 
 from . import util
 from .asttokens import ASTTokens
-from .util import AstConstant
 from .astroid_compat import astroid_node_classes as nc, BaseContainer as AstroidBaseContainer
 
 if TYPE_CHECKING:
@@ -177,13 +176,6 @@ class MarkTokens:
     util.expect_token(before, token.OP, open_brace)
     return (before, last_token)
 
-  # Python 3.8 fixed the starting position of list comprehensions:
-  # https://bugs.python.org/issue31241
-  if sys.version_info < (3, 8):
-    def visit_listcomp(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      return self.handle_comp('[', node, first_token, last_token)
-
   def visit_comprehension(self,
                           node,  # type: AstNode
                           first_token,  # type: util.Token
@@ -296,26 +288,19 @@ class MarkTokens:
       last_token = maybe_comma
     return (first_token, last_token)
 
-  if sys.version_info >= (3, 8):
-    # In Python3.8 parsed tuples include parentheses when present.
-    def handle_tuple_nonempty(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      assert isinstance(node, ast.Tuple) or isinstance(node, AstroidBaseContainer)
-      # It's a bare tuple if the first token belongs to the first child. The first child may
-      # include extraneous parentheses (which don't create new nodes), so account for those too.
-      child = node.elts[0]
-      if TYPE_CHECKING:
-        child = cast(AstNode, child)
-      child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
-      if first_token == child_first:
-        return self.handle_bare_tuple(node, first_token, last_token)
-      return (first_token, last_token)
-  else:
-    # Before python 3.8, parsed tuples do not include parens.
-    def handle_tuple_nonempty(self, node, first_token, last_token):
-      # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-      (first_token, last_token) = self.handle_bare_tuple(node, first_token, last_token)
-      return self._gobble_parens(first_token, last_token, False)
+  # In Python3.8 parsed tuples include parentheses when present.
+  def handle_tuple_nonempty(self, node, first_token, last_token):
+    # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
+    assert isinstance(node, ast.Tuple) or isinstance(node, AstroidBaseContainer)
+    # It's a bare tuple if the first token belongs to the first child. The first child may
+    # include extraneous parentheses (which don't create new nodes), so account for those too.
+    child = node.elts[0]
+    if TYPE_CHECKING:
+      child = cast(AstNode, child)
+    child_first, child_last = self._gobble_parens(child.first_token, child.last_token, True)
+    if first_token == child_first:
+      return self.handle_bare_tuple(node, first_token, last_token)
+    return (first_token, last_token)
 
   def visit_tuple(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
@@ -417,19 +402,15 @@ class MarkTokens:
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     return self.handle_num(node, cast(ast.Num, node).n, first_token, last_token)
 
-  # In Astroid, the Num and Str nodes are replaced by Const.
   def visit_const(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    assert isinstance(node, AstConstant) or isinstance(node, nc.Const)
+    assert isinstance(node, ast.Constant) or isinstance(node, nc.Const)
     if isinstance(node.value, numbers.Number):
       return self.handle_num(node, node.value, first_token, last_token)
     elif isinstance(node.value, (str, bytes)):
       return self.visit_str(node, first_token, last_token)
     return (first_token, last_token)
 
-  # In Python >= 3.6, there is a similar class 'Constant' for literals
-  # In 3.8 it became the type produced by ast.parse
-  # https://bugs.python.org/issue32892
   visit_constant = visit_const
 
   def visit_keyword(self, node, first_token, last_token):
