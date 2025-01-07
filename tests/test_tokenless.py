@@ -47,7 +47,7 @@ def is_fstring_format_spec(node):
       and len(node.values) == 1
       and (
           (
-              isinstance(node.values[0], ast.Str)
+              isinstance(node.values[0], ast.Constant)
               and node.values[0].value in ['.2f']
           ) or (
               isinstance(node.values[0], ast.FormattedValue)
@@ -97,7 +97,7 @@ class TestTokenless(unittest.TestCase):
       atok_text = atok.get_text(node, padded=padded)
       if ast_text:
         if sys.version_info < (3, 12) and (
-          ast_text.startswith("f") and isinstance(node, (ast.Str, ast.FormattedValue))
+          ast_text.startswith("f") and isinstance(node, (ast.Constant, ast.FormattedValue))
           or is_fstring_format_spec(node)
           or (not fstring_positions_work() and is_fstring_internal_node(node))
         ):
