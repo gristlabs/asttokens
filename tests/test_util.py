@@ -98,7 +98,7 @@ class TestUtil(unittest.TestCase):
     source = "foo(bar(1 + 2), 'hello' + ', ' + 'world')"
     atok = asttokens.ASTTokens(source, parse=True)
     names = [n for n in asttokens.util.walk(atok.tree) if isinstance(n, ast.Name)]
-    strings = [n for n in asttokens.util.walk(atok.tree) if isinstance(n, ast.Str)]
+    strings = [n for n in asttokens.util.walk(atok.tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)]
     repl1 = [atok.get_text_range(n) + ('TEST',) for n in names]
     repl2 = [atok.get_text_range(n) + ('val',) for n in strings]
     self.assertEqual(asttokens.util.replace(source, repl1 + repl2),

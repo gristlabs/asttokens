@@ -125,7 +125,7 @@ class TestASTTokens(unittest.TestCase):
 
     # Verify that ast parser produces offsets as we expect. This is just to inform the
     # implementation.
-    string_node = next(n for n in ast.walk(root) if isinstance(n, ast.Str))
+    string_node = next(n for n in ast.walk(root) if isinstance(n, ast.Constant))
     self.assertEqual(string_node.lineno, 1)
     self.assertEqual(string_node.col_offset, 4)
 
