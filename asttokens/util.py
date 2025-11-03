@@ -199,7 +199,7 @@ def is_expr_stmt(node):
 
 CONSTANT_CLASSES: Tuple[Type, ...] = (ast.Constant,)
 try:
-  from astroid import Const
+  from astroid.nodes import Const
   CONSTANT_CLASSES += (Const,)
 except ImportError:  # pragma: no cover
   # astroid is not available

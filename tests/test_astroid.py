@@ -3,6 +3,7 @@ import astroid
 
 from asttokens import ASTTokens
 from asttokens.astroid_compat import astroid_node_classes
+from astroid.manager import AstroidManager
 from . import test_mark_tokens
 
 
@@ -36,7 +37,8 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
 
   @staticmethod
   def create_asttokens(source):
-    builder = astroid.builder.AstroidBuilder()
+    manager = AstroidManager()
+    builder = astroid.builder.AstroidBuilder(manager)
     try:
       tree = builder.string_build(source)
     except AttributeError as e:

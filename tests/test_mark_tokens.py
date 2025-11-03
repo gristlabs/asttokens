@@ -144,8 +144,8 @@ b +     # line3
       if issubclass(ast.Slice, ast.expr):
         exp_index += 1
     else:
-      # Astroid v3 has some changes from v2
-      if self.astroid_version == 3:
+      # Astroid v3 and v4 have some changes from v2
+      if self.astroid_version in (3, 4):
         exp_index += 1
     exp_tested_nodes = self.expect_tested_nodes[path][exp_index]
     self.assertEqual(tested_nodes, exp_tested_nodes)
