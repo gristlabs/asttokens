@@ -18,6 +18,7 @@ jobs:
           - 3.11
           - 3.12
           - 3.13
+          - 3.14
           # As per https://github.com/actions/virtual-environments/blob/main/images/linux/Ubuntu2004-Readme.md#pypy list of versions
           - pypy-3.8
           - pypy-3.9
@@ -25,8 +26,8 @@ jobs:
         astroid-version:
           - ''
         include:
-          # Test recent Python on Astroid v2 too (the above natural tests will
-          # pick up Astroid v3 for these Python versions)
+          # Test recent Python on Astroid v2 and v3 too (the above natural tests will
+          # pick up the latest Astroid version for these Python versions)
           - python-version: '3.8'
             astroid-version: '<3'
           - python-version: '3.9'
@@ -41,6 +42,10 @@ jobs:
             astroid-version: '<3'
           - python-version: 'pypy-3.10'
             astroid-version: '<3'
+          - python-version: '3.10'
+            astroid-version: '<4'
+          - python-version: '3.12'
+            astroid-version: '<4'
 
     env:
       COVERALLS_PARALLEL: true
