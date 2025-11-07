@@ -918,3 +918,14 @@ if 0:
         t2 = re.sub(r'^ +$', '', t2, flags=re.MULTILINE)
 
       self.assertEqual(t1, t2)
+
+  def test_list_comprehension(self):
+    source = '[x for x in range(2)]'
+    m = self.create_mark_checker(source)
+
+  def test_dict_comprehension(self):
+    source = '{x: 2 * x for x in range(2)}'
+    m = self.create_mark_checker(source)
+    assert 'DictComp'  in str(m.view_nodes_at(0, 0))
+
+    
