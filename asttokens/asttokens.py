@@ -103,7 +103,7 @@ class ASTTokens(ASTTextBase):
   """
 
   def __init__(self, source_text, parse=False, tree=None, filename='<unknown>', tokens=None):
-    # type: (Any, bool, Optional[Module], str, Iterable[TokenInfo]) -> None
+    # type: (Any, bool, Optional[Module], str, Optional[Iterable[TokenInfo]]) -> None
     super(ASTTokens, self).__init__(source_text, filename)
 
     self._tree = ast.parse(source_text, filename) if parse else tree
