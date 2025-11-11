@@ -57,7 +57,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade coveralls pytest<9.0 setuptools setuptools_scm pep517
+          pip install --upgrade coveralls "pytest<9.0" setuptools setuptools_scm pep517
           pip install .[test] 'astroid${{ matrix.astroid-version }}'
 
       - name: Mypy testing
