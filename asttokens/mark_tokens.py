@@ -401,9 +401,7 @@ class MarkTokens:
   def visit_num(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
     if sys.version_info.major==3 and sys.version_info.minor <= 14:
-        n = cast(ast.Num, node).n
-    else:
-        n = cast(ast.Constant, node).n
+        n = cast(ast.Num, node).n # type: ignore[name-defined] # removed in 3.14
     assert isinstance(n, (complex, int, numbers.Number))
     return self.handle_num(node, n, first_token, last_token)
 
