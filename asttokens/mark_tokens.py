@@ -400,7 +400,7 @@ class MarkTokens:
 
   def visit_num(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    if sys.version_info.major==3 and sys.version_info.minor <= 14:
+    if sys.version_info <= (3, 14):
         n = cast(ast.Num, node).n
     else:
         n = node.n  # type: ignore[union-attr] # 3.14+
