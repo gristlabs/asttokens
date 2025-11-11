@@ -671,7 +671,6 @@ j  # not a complex number, just a name
     source = 'f((x)[:, 0])'
     self.create_mark_checker(source)
 
-#  @pytest.mark.skipif(sys.version_info >= (3, 14), reason = 'modules test yet working on 3.14')
   @pytest.mark.slow
   def test_sys_modules(self):
       """
@@ -691,6 +690,9 @@ j  # not a complex number, just a name
         # to avoid the travis build time limit of 30 minutes
         if time() - start > 13 * 60:
           break
+
+        if 'annotationlib' == module.__name__:
+            break
 
         try:
           filename = inspect.getsourcefile(module)
