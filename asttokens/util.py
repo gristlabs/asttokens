@@ -46,6 +46,8 @@ if TYPE_CHECKING:  # pragma: no cover
     first_token = None  # type: Token
     last_token = None  # type: Token
     lineno = 0  # type: int
+    end_lineno = 0 # type : int
+    end_col_offset = 0 # type : int
 
   AstNode = Union[EnhancedAST, NodeNG]
 
@@ -404,7 +406,7 @@ def combine_tokens(group):
 
 
 def last_stmt(node):
-  # type: (ast.AST) -> ast.AST
+  # type: (AstNode) -> AstNode  
   """
   If the given AST node contains multiple statements, return the last one.
   Otherwise, just return the node.

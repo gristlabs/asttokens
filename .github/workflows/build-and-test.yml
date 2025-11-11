@@ -45,6 +45,7 @@ jobs:
             astroid-version: '<4'
           - python-version: '3.12'
             astroid-version: '<4'
+          - python-version: '3.14'
 
     env:
       COVERALLS_PARALLEL: true
@@ -66,7 +67,7 @@ jobs:
       - name: Mypy testing
         run: |
           # Not an exact mypy version, as we need 0.942 for pypy-3.8 support, but it's not available on 3.5
-          pip install "mypy>=0.910,<=0.942"
+          pip install "mypy>=1.10"
           python -m mypy asttokens tests/*.py
 
       - name: Fast tests with coverage
