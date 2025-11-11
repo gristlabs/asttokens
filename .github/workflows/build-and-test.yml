@@ -25,6 +25,7 @@ jobs:
         include:
           # Test recent Python on Astroid v2 and v3 too (the above natural tests will
           # pick up the latest Astroid version for these Python versions)
+          - python-version: '3.14'
           - python-version: '3.9'
             astroid-version: '<3'
           - python-version: '3.10'
@@ -41,7 +42,6 @@ jobs:
             astroid-version: '<4'
           - python-version: '3.12'
             astroid-version: '<4'
-          - python-version: '3.14'
 
     env:
       COVERALLS_PARALLEL: true

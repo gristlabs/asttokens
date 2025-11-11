@@ -671,7 +671,7 @@ j  # not a complex number, just a name
     source = 'f((x)[:, 0])'
     self.create_mark_checker(source)
 
-  @pytest.mark.skipif(sys.version_info >= (3, 14), reason = 'modules test yet working on 3.14')
+#  @pytest.mark.skipif(sys.version_info >= (3, 14), reason = 'modules test yet working on 3.14')
   @pytest.mark.slow
   def test_sys_modules(self):
       """
