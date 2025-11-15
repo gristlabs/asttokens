@@ -691,6 +691,9 @@ j  # not a complex number, just a name
         if time() - start > 13 * 60:
           break
 
+        if 'annotationlib' == module.__name__:
+            break
+
         try:
           filename = inspect.getsourcefile(module)
         except Exception:  # some modules raise weird errors

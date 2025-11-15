@@ -400,7 +400,9 @@ class MarkTokens:
 
   def visit_num(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
-    return self.handle_num(node, cast(ast.Num, node).n, first_token, last_token)
+    n = node.n  # type: ignore[union-attr] # ast.Num has been removed in python 3.14
+    assert isinstance(n, (complex, int, numbers.Number))
+    return self.handle_num(node, n, first_token, last_token)
 
   def visit_const(self, node, first_token, last_token):
     # type: (AstNode, util.Token, util.Token) -> Tuple[util.Token, util.Token]
