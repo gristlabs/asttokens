@@ -303,6 +303,30 @@ bar = ('x y z'   # comment2
           "%s:%s" % ("AssignName" if self.is_astroid_test else "Name", source.split("=")[0]),
         })
 
+  def test_mixed_line_endings(self):
+      # Test of https://github.com/gristlabs/asttokens/issues/105
+      # Source that mixes a lone "\r" (an old-Mac line ending) with "\n" used to raise
+      # `IndexError: list index out of range` while marking tokens, because a lone "\r" wasn't
+      # recognised as a line boundary, so AST positions on the following line were mapped past the
+      # end of the token stream. The minimal reproducer is `"\ry.y\n"`; we check that one and a few
+      # related cases parse and mark without error.
+      for source in (
+        "\ry.y\n",   # the maintainer's minimal reproducer
+        "\ry\n",
+        "\ry",
+        "a\rb.c\n",
+        "\r\ny.y\n",  # "\r\n" was already handled; make sure it still is
+      ):
+        atok = self.create_asttokens(source)
+        # The last token is always the ENDMARKER, and marking must not let any node's tokens run
+        # off the end of the token stream onto it (which is how the original bug manifested).
+        self.assertEqual(atok.tokens[-1].type, token.ENDMARKER)
+        for node in util.walk(atok.tree):
+          first, last = getattr(node, 'first_token', None), getattr(node, 'last_token', None)
+          if first is not None:
+            self.assertNotEqual(last.type, token.ENDMARKER, node)
+            self.assertLessEqual(last.index, len(atok.tokens) - 1)
+
   def test_bytes_smoke(self):
       const = 'Const' if self.is_astroid_test else (
           'Constant'

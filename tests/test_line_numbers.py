@@ -36,6 +36,19 @@ class TestLineNumbers(unittest.TestCase):
     self.assertEqual(ln.offset_to_line(100), (8, 0))
     self.assertEqual(ln.offset_to_line(-100), (1, 0))
 
+  def test_carriage_returns(self):
+    # A lone "\r" (old-Mac line ending) and "\r\n" (Windows) must both count as line boundaries,
+    # matching how Python's tokenizer and ast module number source lines. See issue #105.
+    ln = asttokens.LineNumbers("a\rb\r\nc\nd")
+    self.assertEqual(ln.line_to_offset(1, 0), 0)   # "a"
+    self.assertEqual(ln.line_to_offset(2, 0), 2)   # "b" (after lone "\r")
+    self.assertEqual(ln.line_to_offset(3, 0), 5)   # "c" (after "\r\n")
+    self.assertEqual(ln.line_to_offset(4, 0), 7)   # "d" (after "\n")
+    self.assertEqual(ln.offset_to_line(0), (1, 0))
+    self.assertEqual(ln.offset_to_line(2), (2, 0))
+    self.assertEqual(ln.offset_to_line(5), (3, 0))
+    self.assertEqual(ln.offset_to_line(7), (4, 0))
+
   def test_unicode(self):
     ln = asttokens.LineNumbers("фыва\nячсм")
     self.assertEqual(ln.line_to_offset(1, 0), 0)

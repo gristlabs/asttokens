@@ -16,7 +16,10 @@ import bisect
 import re
 from typing import Dict, List, Tuple
 
-_line_start_re = re.compile(r'^', re.M)
+# Matches the end-of-line sequences that Python treats as line boundaries in source code, i.e.
+# "\r\n", "\r", or "\n". Using this (rather than a plain `re.M` `^`) means we recognise a lone
+# "\r" as a line separator, matching how the tokenizer and ast module number lines. See issue #105.
+_line_end_re = re.compile(r'\r\n|\r|\n')
 
 class LineNumbers:
   """
@@ -27,8 +30,9 @@ class LineNumbers:
   translating to and from utf8 offsets, which are used by ast parsing.
   """
   def __init__(self, text: str) -> None:
-    # A list of character offsets of each line's first character.
-    self._line_offsets = [m.start(0) for m in _line_start_re.finditer(text)]
+    # A list of character offsets of each line's first character. The first line always starts at
+    # offset 0, and each subsequent line starts right after an end-of-line sequence.
+    self._line_offsets = [0] + [m.end(0) for m in _line_end_re.finditer(text)]
     self._text = text
     self._text_len = len(text)
     self._utf8_offset_cache: Dict[int, List[int]] = {} # maps line num to list of char offset for each byte in line
