@@ -15,6 +15,7 @@
 import ast
 import collections
 import io
+import re
 import sys
 import token
 import tokenize
@@ -43,6 +44,7 @@ else:
 
 
 TokenInfo = tokenize.TokenInfo
+_lone_cr_re = re.compile(r'\r(?!\n)')
 
 
 def token_repr(tok_type: int, string: Optional[str]) -> str:
@@ -111,6 +113,11 @@ def generate_tokens(text: str) -> Iterator[TokenInfo]:
   """
   Generates standard library tokens for the given code.
   """
+  # Before Python 3.12, tokenize treats an entire line containing a lone carriage return as a
+  # non-coding NL token, even though ast.parse treats the carriage return as a line boundary.
+  # Replacing lone carriage returns is length-preserving, so token offsets still map to the
+  # original source. Keep CRLF intact because changing its length would shift later offsets.
+  text = _lone_cr_re.sub('\n', text)
   # tokenize.generate_tokens is technically an undocumented API for Python3, but allows us to use the same API as for
   # Python2. See https://stackoverflow.com/a/4952291/328565.
   # FIXME: Remove cast once https://github.com/python/typeshed/issues/7003 gets fixed
