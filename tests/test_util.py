@@ -127,6 +127,12 @@ def test_generate_tokens_normalizes_lone_carriage_returns():
   crlf_tokens = list(asttokens.util.generate_tokens("\r\ny.y\n"))
   assert crlf_tokens[0].string == "\r\n"
 
+  triple_tokens = list(asttokens.util.generate_tokens('value = """a\rb"""\n'))
+  string_token = next(tok for tok in triple_tokens if tok.type == token.STRING)
+  assert string_token.string == '"""a\nb"""'
+  assert string_token.start == (1, 8)
+  assert string_token.end == (2, 4)
+
 
 def test_combine_tokens():
     from tokenize import TokenInfo, generate_tokens, ERRORTOKEN, OP, NUMBER, NAME
