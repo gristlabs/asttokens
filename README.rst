@@ -86,7 +86,7 @@ Documentation
 
 Documentation at https://asttokens.readthedocs.io/ is built by Read the Docs automatically on
 every push, from the sources in ``docs/`` (configured in ``.readthedocs.yaml``). To preview
-changes locally::
+changes locally, with the virtualenv activated::
 
     pip install -r docs/requirements.txt
     make -C docs html
