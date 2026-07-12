@@ -86,10 +86,10 @@ Documentation
 
 Documentation at https://asttokens.readthedocs.io/ is built by Read the Docs automatically on
 every push, from the sources in ``docs/`` (configured in ``.readthedocs.yaml``). To preview
-changes locally, with the virtualenv activated::
+changes locally::
 
     pip install -r docs/requirements.txt
-    make -C docs html
+    sphinx-build -M html docs docs/_build
 
 Release
 -------
