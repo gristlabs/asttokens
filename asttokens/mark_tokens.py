@@ -257,6 +257,61 @@ class MarkTokens:
     last_token = self.handle_following_brackets(node, last_token, '(')
     return (first_token, last_token)
 
+  # `ast` stores the trailing name of these nodes as a plain identifier rather than as a child
+  # node, so there is no child for last_token to extend to and it stops on the operator before
+  # the name. astroid stores the same names as AssignName children, hence the isinstance checks.
+
+  def _extend_to_name(self, name: object, last_token: util.Token) -> util.Token:
+    """Extend last_token onto an immediately following NAME token equal to `name`.
+
+    `name` is only a string for `ast`; astroid stores the same captures as AssignName
+    children, and those already carry a position, so there is nothing to extend onto.
+    """
+    if isinstance(name, str):
+      following = self._code.next_token(last_token)
+      if util.match_token(following, token.NAME, name):
+        return following
+    return last_token
+
+  def visit_matchstar(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    # 'case [*rest]', and 'case [*_]' where name is None but '_' is still written.
+    name = getattr(node, 'name', None)
+    return (first_token, self._extend_to_name('_' if name is None else name, last_token))
+
+  def visit_typevartuple(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    # PEP 695 '*Ts' and '**P'.
+    return (first_token, self._extend_to_name(getattr(node, 'name', None), last_token))
+
+  visit_paramspec = visit_typevartuple
+
+  def visit_matchas(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    # 'case str() as s'. Without a sub-pattern ('case s') first_token is already the name.
+    name = getattr(node, 'name', None)
+    if isinstance(name, str) and getattr(node, 'pattern', None) is not None:
+      as_token = self._code.next_token(last_token)
+      if util.match_token(as_token, token.NAME, 'as'):
+        last_token = self._extend_to_name(name, as_token)
+    return (first_token, last_token)
+
+  def visit_matchmapping(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    # "case {'k': v, **rest}". The closing brace is picked up by the re-expansion afterwards.
+    rest = getattr(node, 'rest', None)
+    if isinstance(rest, str):
+      following = self._code.next_token(last_token)
+      if util.match_token(following, token.OP, ','):
+        following = self._code.next_token(following)
+      if util.match_token(following, token.OP, '**'):
+        last_token = self._extend_to_name(rest, following)
+    return (first_token, last_token)
+
   def visit_subscript(
     self,
     node: AstNode,
