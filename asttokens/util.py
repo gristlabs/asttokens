@@ -202,7 +202,7 @@ CONSTANT_CLASSES: Tuple[Type, ...] = (ast.Constant,)
 try:
   from astroid.nodes import Const
   CONSTANT_CLASSES += (Const,)
-except ImportError:  # pragma: no cover
+except ImportError:
   # astroid is not available
   pass
 
