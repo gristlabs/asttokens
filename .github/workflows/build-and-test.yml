@@ -52,40 +52,40 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        # Astral uv is pip-compatible but *much* faster
+      - name: Set up uv for Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v10.3.0
         with:
           python-version: ${{ matrix.python-version }}
-          allow-prereleases: true
 
       - name: Install dependencies
         run: |
-          pip install --upgrade coveralls "pytest<9.0" setuptools setuptools_scm pep517
-          pip install .[test] 'astroid${{ matrix.astroid-version }}'
+          uv venv
+          uv pip install --upgrade coveralls "pytest<9.0"
+          uv pip install .[test] 'astroid${{ matrix.astroid-version }}'
 
       - name: Mypy testing
         # Skip testing mypy on pypy since mypy no longer installs there, and
         # type-checking on pypy is anyway redundant with CPython jobs.
         if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         run: |
-          pip install "mypy>=1.10"
-          python -m mypy asttokens tests/*.py
+          uv pip install "mypy>=1.10"
+          uv run -m mypy asttokens tests/*.py
 
       - name: Fast tests with coverage
         run: |
-          pytest --cov -n auto -m "not slow"
-          coverage report -m
+          uv run pytest --cov -n auto -m "not slow"
+          uv run coverage report -m
 
       - name: Slow tests without coverage
         run: |
-          pytest -n auto -m slow
+          uv run pytest -n auto -m slow
 
       - name: Collect coverage results
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          pip3 install --upgrade coveralls
-          python3 -m coveralls --service=github
+          uv run -m coveralls --service=github
 
   finish:
     needs: test
