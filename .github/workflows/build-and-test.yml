@@ -44,6 +44,8 @@ jobs:
             astroid-version: '<4'
           - python-version: '3.12'
             astroid-version: '<4'
+          - python-version: '3.13'
+            astroid-version: 'none'
           - python-version: '3.14'
 
     env:
@@ -61,7 +63,12 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade coveralls "pytest<9.0" setuptools setuptools_scm pep517
-          pip install .[test] 'astroid${{ matrix.astroid-version }}'
+          if [ '${{ matrix.astroid-version }}' = 'none' ]; then
+            pip install '.[test-no-astroid]'
+            python -c "import importlib.util; assert importlib.util.find_spec('astroid') is None"
+          else
+            pip install '.[test]' 'astroid${{ matrix.astroid-version }}'
+          fi
 
       - name: Mypy testing
         # Skip testing mypy on pypy since mypy no longer installs there, and

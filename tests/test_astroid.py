@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
-import astroid
+import pytest
+
+astroid = pytest.importorskip("astroid")
 
 from asttokens import ASTTokens
 from asttokens.astroid_compat import astroid_node_classes
 from astroid.manager import AstroidManager
 from . import test_mark_tokens
+from .tools import AstroidTreeException
 
 
 class TestAstroid(test_mark_tokens.TestMarkTokens):
@@ -44,7 +47,3 @@ class TestAstroid(test_mark_tokens.TestMarkTokens):
     except AttributeError as e:
       raise AstroidTreeException(str(e))
     return ASTTokens(source, tree=tree)
-
-
-class AstroidTreeException(Exception):
-  pass

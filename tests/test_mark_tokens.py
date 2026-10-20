@@ -12,7 +12,6 @@ from typing import List
 import unittest
 from time import time
 
-import astroid
 from asttokens import util, ASTTokens
 
 from . import tools
@@ -196,6 +195,7 @@ b +     # line3
     source = tools.read_fixture('astroid/joined_strings.py')
 
     if self.is_astroid_test:
+      import astroid
       if getattr(astroid, '__version__', '1') >= '2':
         # Astroid 2 no longer supports this; see
         # https://github.com/PyCQA/astroid/issues/557#issuecomment-396004274
@@ -695,7 +695,6 @@ j  # not a complex number, just a name
       so is marked as a slow test and must be explicitly selected
       for running.
       """
-      from .test_astroid import AstroidTreeException
 
       modules = list(sys.modules.values())
 
@@ -734,7 +733,7 @@ j  # not a complex number, just a name
 
         try:
           self.create_mark_checker(source)
-        except AstroidTreeException:
+        except tools.AstroidTreeException:
           # Astroid sometimes fails with errors like:
           #     AttributeError: 'TreeRebuilder' object has no attribute 'visit_typealias'
           # See https://github.com/gristlabs/asttokens/actions/runs/6015907789/job/16318767911?pr=110
