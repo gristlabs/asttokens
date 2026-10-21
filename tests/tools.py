@@ -132,21 +132,18 @@ class MarkChecker(object):
     if not supports_tokenless():
       return
 
-    if test_case.is_astroid_test:
-      import astroid
-
     text_tokenless = self.atext.get_text(node)
     if isinstance(node, ast.alias):
       self._check_alias_tokenless(node, test_case, text_tokenless)
     elif util.is_module(node):
       test_case.assertEqual(text_tokenless, self.atext._text)
-    elif test_case.is_astroid_test and isinstance(node, astroid.DictUnpack):
+    elif node.__class__.__name__ == 'DictUnpack':
       # This is a strange node that *seems* to represent just the `**` in `{**foo}`
       # (not `**foo` or `foo`), but text_tokenless is `foo`
       # while `text` is just the first token of that.
       # 'Fixing' either of these or making them match doesn't seem useful.
       return
-    elif test_case.is_astroid_test and isinstance(node, astroid.Decorators):
+    elif node.__class__.__name__ == 'Decorators':
       # Another strange node where it's not worth making the two texts match
       return
     elif supports_tokenless(node):
@@ -162,7 +159,7 @@ class MarkChecker(object):
               text_tokenless[len(text):].strip().startswith('# type: ')
               # astroid+ASTTokens doesn't correctly handle the 3.12+ type variable syntax.
               # Since ASTText is preferred for new Python versions, this is not a priority.
-              or isinstance(node.parent, astroid.TypeVar)
+              or getattr(node, 'parent', None).__class__.__name__ == 'TypeVar'
             )
           ):
             return
