@@ -16,6 +16,7 @@ import ast
 import numbers
 import sys
 import token
+import unicodedata
 from ast import Module
 from typing import Callable, List, Union, cast, Optional, Tuple, TYPE_CHECKING
 
@@ -37,6 +38,15 @@ _matching_pairs_right = {
   (token.OP, ']'): (token.OP, '['),
   (token.OP, '}'): (token.OP, '{'),
 }
+
+
+def _spells_identifier(tok_str: str, name: str) -> bool:
+  """Whether a NAME token is the source spelling of the identifier `name`.
+
+  The two can differ: Python normalises identifiers with NFKC while the tokenizer keeps the
+  source text, so `case [*\u212a]` (KELVIN SIGN) parses to a name of 'K'.
+  """
+  return tok_str == name or unicodedata.normalize('NFKC', tok_str) == name
 
 
 class MarkTokens:
@@ -262,14 +272,14 @@ class MarkTokens:
   # the name. astroid stores the same names as AssignName children, hence the isinstance checks.
 
   def _extend_to_name(self, name: object, last_token: util.Token) -> util.Token:
-    """Extend last_token onto an immediately following NAME token equal to `name`.
+    """Extend last_token onto an immediately following NAME token spelling `name`.
 
     `name` is only a string for `ast`; astroid stores the same captures as AssignName
     children, and those already carry a position, so there is nothing to extend onto.
     """
     if isinstance(name, str):
       following = self._code.next_token(last_token)
-      if util.match_token(following, token.NAME, name):
+      if following.type == token.NAME and _spells_identifier(following.string, name):
         return following
     return last_token
 
