@@ -9,7 +9,7 @@ except Exception:
     from astroid import node_classes as astroid_node_classes
     from astroid.node_classes import NodeNG
     from astroid.node_classes import _BaseContainer as BaseContainer
-  except Exception:  # pragma: no cover
+  except Exception:
     astroid_node_classes = None
     NodeNG = None
     BaseContainer = None

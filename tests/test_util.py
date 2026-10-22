@@ -5,7 +5,6 @@ import sys
 import token
 import unittest
 
-import astroid
 import pytest
 
 from .context import asttokens
@@ -65,6 +64,7 @@ class TestUtil(unittest.TestCase):
     ])
 
   def test_walk_astroid(self):
+    astroid = pytest.importorskip("astroid")
     atok = asttokens.ASTTokens(self.source, tree=astroid.builder.parse(self.source))
 
     def view(node):
