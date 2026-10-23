@@ -88,14 +88,15 @@ jobs:
           python3 -m coveralls --service=github
 
   docs:
-    # Keep in sync with .readthedocs.yaml
+    # Note: CI build must must be kept in sync with the equivalent ReadTheDocs
+    # configuration in `.readthedocs.yaml`
     runs-on: ubuntu-22.04
-
     steps:
       - uses: actions/checkout@v7
 
         # Astral uv is pip-compatible but *much* faster
       - uses: astral-sh/setup-uv@v10.3.0
+        id: setup-python-uv
         with:
           python-version: 3.11
 
@@ -103,6 +104,7 @@ jobs:
         run: uv venv
 
       - name: Install dependencies
+        id: install-dependencies
         run: uv pip install . -r docs/requirements.txt
 
       - name: Build docs
