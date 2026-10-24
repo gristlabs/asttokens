@@ -10,6 +10,7 @@ import textwrap
 import token
 from typing import List
 import unittest
+from unittest import mock
 from time import time
 
 from asttokens import util, ASTTokens
@@ -32,8 +33,8 @@ class TestMarkTokens(unittest.TestCase):
   astroid_version = None  # type: int | None
   module = ast
 
-  def create_mark_checker(self, source, verify=True):
-    atok = self.create_asttokens(source)
+  def create_mark_checker(self, source, verify=True, tree=None):
+    atok = ASTTokens(source, tree=tree) if tree is not None else self.create_asttokens(source)
     checker = tools.MarkChecker(atok)
 
     # The last token should always be an ENDMARKER
@@ -50,6 +51,16 @@ class TestMarkTokens(unittest.TestCase):
   @staticmethod
   def create_asttokens(source):
     return ASTTokens(source, parse=True)
+
+  def create_deep_recursion_mark_checker(self, source):
+    try:
+      tree = ast.parse(source)
+    except RecursionError as error:
+      # Some CPython builds fail while constructing this AST, before asttokens is called.
+      if str(error) == 'maximum recursion depth exceeded during ast construction':
+        self.skipTest('CPython could not construct the deep-recursion test AST')
+      raise
+    return self.create_mark_checker(source, verify=False, tree=tree)
 
   def print_timing(self):
     # Print the timing of mark_tokens(). This doesn't normally run as a unittest, but if you'd like
@@ -217,7 +228,7 @@ b +     # line3
       # astroid could avoid the need for the optimization by using an explicit stack like we do.
       #self.assertEqual(m.atok.get_text_range(const), (5, len(source) - 1))
     else:
-      m = self.create_mark_checker(source, verify=False)
+      m = self.create_deep_recursion_mark_checker(source)
       self.assertEqual(len(m.all_nodes), 2104)
       self.assertEqual(m.view_node(m.all_nodes[-1]),
                        "Constant:'F1akOFFiRIgPHTZksKBAgMCLGTdGNIAAQgKfDAcgZbj0odOnUA8GBAA7'")
@@ -236,6 +247,34 @@ b +     # line3
     assign = next(n for n in m.all_nodes if n.__class__.__name__ == 'Assign')
     self.assertTrue(m.atok.get_text(assign).startswith("x = ("))
     self.assertTrue(m.atok.get_text(assign).endswith(")"))
+
+  def test_deep_recursion_skips_only_ast_construction_limit(self):
+    if self.is_astroid_test:
+      self.skipTest('This applies only to CPython AST construction')
+
+    source = tools.read_fixture('astroid', 'joined_strings.py')
+    original_limit = sys.getrecursionlimit()
+    try:
+      sys.setrecursionlimit(200)
+      try:
+        ast.parse(source)
+      except RecursionError as error:
+        if str(error) != 'maximum recursion depth exceeded during ast construction':
+          raise
+        with self.assertRaises(unittest.SkipTest):
+          self.create_deep_recursion_mark_checker(source)
+      else:
+        self.skipTest('This interpreter can construct the deep-recursion AST at limit 200')
+    finally:
+      sys.setrecursionlimit(original_limit)
+
+  def test_deep_recursion_does_not_skip_asttokens_recursion_error(self):
+    if self.is_astroid_test:
+      self.skipTest('This applies only to CPython AST construction')
+    with mock.patch.object(self, 'create_mark_checker', side_effect=RecursionError(
+        'maximum recursion depth exceeded during ast construction')):
+      with self.assertRaisesRegex(RecursionError, 'during ast construction'):
+        self.create_deep_recursion_mark_checker('x = 1')
 
   def test_slices(self):
     # Make sure we don't fail on parsing slices of the form `foo[4:]`.
