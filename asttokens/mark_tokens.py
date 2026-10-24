@@ -175,6 +175,9 @@ class MarkTokens:
 
     # Aliases have no children, and before Python 3.10 they have no positions either.
     current = self._code.find_token(first_token, token.NAME, 'import')
+    if token.ISEOF(current.type):
+      # Keep the generic range when the tree has no corresponding import tokens.
+      return (first_token, last_token)
     current = self._code.next_token(current)
     if util.match_token(current, token.OP, '('):
       current = self._code.next_token(current)
