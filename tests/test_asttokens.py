@@ -142,6 +142,21 @@ class TestASTTokens(unittest.TestCase):
     self.assertEqual(atok.get_text(a_node), "a")
     self.assertEqual(atok.get_text(b_node), "b")
 
+  def test_utf8_byte_source_positions(self):
+    source = "# coding: latin-1\nname = 'é😊'; result = name\n"
+    start = source.index('result')
+    for source_text in (source, source.encode('utf-8'), source.encode('utf-8-sig')):
+      with self.subTest(source_text=source_text):
+        atok = asttokens.ASTTokens(source_text, parse=True)
+        self.assertEqual(atok.text, source)
+        result = next(n for n in ast.walk(atok.tree)
+                      if isinstance(n, ast.Name) and n.id == 'result')
+        self.assertEqual(atok.get_text_range(result), (start, start + len('result')))
+        self.assertEqual(atok.get_text(result), 'result')
+        value = next(n for n in ast.walk(atok.tree) if isinstance(n, ast.Constant))
+        self.assertEqual(value.value, 'é😊')
+        self.assertEqual(atok.get_text(value), "'é😊'")
+
   def test_coding_declaration(self):
     """ASTTokens should be able to parse a string with a coding declaration."""
     # In Python 2, a unicode string with a coding declaration is a SyntaxError, but we should be
