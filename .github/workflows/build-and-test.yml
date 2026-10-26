@@ -94,8 +94,36 @@ jobs:
           pip3 install --upgrade coveralls
           python3 -m coveralls --service=github
 
+  docs:
+    # Note: CI build must must be kept in sync with the equivalent ReadTheDocs
+    # configuration in `.readthedocs.yaml`
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+        # Astral uv is pip-compatible but *much* faster
+      - uses: astral-sh/setup-uv@v10.3.0
+        id: setup-python-uv
+        with:
+          python-version: 3.11
+
+      - name: Setup virtualenv
+        run: uv venv
+
+      - name: Install dependencies
+        id: install-dependencies
+        run: uv pip install . -r docs/requirements.txt
+
+      - name: Build docs
+        run: uv run sphinx-build -M html docs docs/_build
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ./docs/_build/html
+
   finish:
-    needs: test
+    needs: [test, docs]
     runs-on: ubuntu-latest
     steps:
       - name: Coveralls Finished

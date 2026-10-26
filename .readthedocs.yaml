@@ -1,6 +1,9 @@
 # Read the Docs configuration file
 # See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
 
+# Note: this file's configuration must be kept in sync with the equivalent CI
+# build in `.github/workflows/build-and-test.yml`
+
 # Required
 version: 2
 
