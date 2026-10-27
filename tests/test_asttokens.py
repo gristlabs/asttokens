@@ -155,6 +155,12 @@ class TestASTTokens(unittest.TestCase):
       "ENDMARKER:''"
     ])
 
+  def test_byte_import_construction(self):
+    for source in [b'import a as b\n', b'from pkg import (name as alias, other)\n']:
+      with self.subTest(source=source):
+        atok = asttokens.ASTTokens(source, parse=True)
+        self.assertEqual(ast.dump(atok.tree), ast.dump(ast.parse(source)))
+
 
 def test_filename():
   filename = "myfile.py"
