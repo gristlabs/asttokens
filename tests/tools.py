@@ -134,7 +134,7 @@ class MarkChecker(object):
 
     text_tokenless = self.atext.get_text(node)
     if isinstance(node, ast.alias):
-      self._check_alias_tokenless(node, test_case, text_tokenless)
+      self._check_alias_tokenless(node, test_case, text_tokenless, text)
     elif util.is_module(node):
       test_case.assertEqual(text_tokenless, self.atext._text)
     elif node.__class__.__name__ == 'DictUnpack':
@@ -192,16 +192,12 @@ class MarkChecker(object):
           with test_case.assertRaises(SyntaxError, msg=(text, ast.dump(node))):
             test_case.parse_snippet(text, node)
 
-  def _check_alias_tokenless(self, node, test_case, text):
+  def _check_alias_tokenless(self, node, test_case, text, text_tokens):
     if sys.version_info < (3, 10):
       # Before 3.10, aliases don't have position information
       test_case.assertEqual(text, '')
-    # For 3.10+, ASTTokens.get_text often returns the wrong value for aliases.
-    # So to verify ASTText.get_text, we instead check the general form.
-    elif node.asname:
-      test_case.assertEqual(text.split(), [node.name, 'as', node.asname])
     else:
-      test_case.assertEqual(text, node.name)
+      test_case.assertEqual(text, text_tokens)
 
 
 def repr_tree(node):

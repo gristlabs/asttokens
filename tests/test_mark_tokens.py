@@ -104,6 +104,39 @@ class TestMarkTokens(unittest.TestCase):
       self.assertEqual(m.view_nodes_at(59, 33), {'keyword:val=autre'})
     self.assertEqual(m.view_nodes_at(59, 37), {'Name:autre'})
 
+  def test_import_aliases(self):
+    if self.is_astroid_test:
+      self.skipTest('astroid imports do not contain alias nodes')
+
+    cases = [
+      ('import asttokens as at', ['asttokens as at']),
+      ('from foo import bar', ['bar']),
+      ('import pkg.sub, os', ['pkg.sub', 'os']),
+      ('import pkg.sub as first, pkg.sub as second',
+       ['pkg.sub as first', 'pkg.sub as second']),
+      ('from .pkg import (name as first, name as second,)',
+       ['name as first', 'name as second']),
+      ('from pkg import (\n  name as first,  # comment\n  other as second,\n)',
+       ['name as first', 'other as second']),
+      ('from ... import *', ['*']),
+      ('import \u212a as kelvin', ['\u212a as kelvin']),
+      ('import a as b; from c import d as e', ['a as b', 'd as e']),
+      ('import pkg as same, pkg as same', ['pkg as same', 'pkg as same']),
+      ('import pkg.sub as same\nfrom other import value as same\nimport pkg.sub as same',
+       ['pkg.sub as same', 'value as same', 'pkg.sub as same']),
+      ('from pkg import (name  # keep comment\n as alias,)',
+       ['name  # keep comment\n as alias']),
+      ('import pkg.\\\n sub as alias', ['pkg.\\\n sub as alias']),
+    ]
+    for source, expected in cases:
+      with self.subTest(source=source):
+        atok = self.create_asttokens(source)
+        aliases = [node for node in ast.walk(atok.tree) if isinstance(node, ast.alias)]
+        self.assertEqual([atok.get_text(node) for node in aliases], expected)
+        ranges = [atok.get_text_range(node) for node in aliases]
+        for previous, current in zip(ranges, ranges[1:]):
+          self.assertLessEqual(previous[1], current[0])
+
   def test_mark_tokens_multiline(self):
     source = (
 """(    # line1

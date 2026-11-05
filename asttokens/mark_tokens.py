@@ -167,6 +167,36 @@ class MarkTokens:
     # By default, we don't need to adjust the token we computed earlier.
     return (first_token, last_token)
 
+  def visit_import(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    if not isinstance(node, (ast.Import, ast.ImportFrom)):
+      return (first_token, last_token)
+
+    # Aliases have no children, and before Python 3.10 they have no positions either.
+    current = self._code.find_token(first_token, token.NAME, 'import')
+    if token.ISEOF(current.type):
+      # Keep the generic range when the tree has no corresponding import tokens.
+      return (first_token, last_token)
+    current = self._code.next_token(current)
+    if util.match_token(current, token.OP, '('):
+      current = self._code.next_token(current)
+    for alias in node.names:
+      child = cast(AstNode, alias)
+      child.first_token = current
+      following = self._code.next_token(current)
+      while util.match_token(following, token.OP, '.'):
+        current = self._code.next_token(following)
+        following = self._code.next_token(current)
+      if util.match_token(following, token.NAME, 'as'):
+        current = self._code.next_token(following)
+        following = self._code.next_token(current)
+      child.last_token = current
+      current = self._code.next_token(following)
+    return (first_token, last_token)
+
+  visit_importfrom = visit_import
+
   def handle_comp(
     self, open_brace: str, node: AstNode, first_token: util.Token, last_token: util.Token
   ) -> Tuple[util.Token, util.Token]:
