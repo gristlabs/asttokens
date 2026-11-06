@@ -66,9 +66,19 @@ class Token(collections.namedtuple('Token', 'type string start end line index st
   - [5] .index    Index of the token in the list of tokens that it belongs to.
   - [6] .startpos Starting character offset into the input text.
   - [7] .endpos   Ending character offset into the input text.
+
+  The .exact_type property gives the specific type for operator tokens (for example,
+  token.LPAR for '('), and otherwise returns .type, like tokenize.TokenInfo.exact_type.
   """
   def __str__(self) -> str:
     return token_repr(self.type, self.string)
+
+  @property
+  def exact_type(self) -> int:
+    """Return the specific operator type, or the original token type otherwise."""
+    if self.type == token.OP:
+      return token.EXACT_TOKEN_TYPES.get(self.string, self.type)
+    return self.type
 
 
 # Type class used to expand out the definition of AST to include fields added by this library
