@@ -2,6 +2,8 @@ import ast
 import sys
 import unittest
 
+import pytest
+
 from asttokens import ASTText, supports_tokenless
 from asttokens.util import fstring_positions_work
 
@@ -27,6 +29,42 @@ fstring_node_dumps = [
   ast.dump(ast.parse(s).body[0].value)  # type: ignore
   for s in ["xx", "yy", "aa", "bb", "xx + 22", "22", "1.23", "'a'"]
 ]
+
+
+@pytest.mark.skipif(not supports_tokenless(), reason="Python version does not support not using tokens")
+@pytest.mark.parametrize('parser_name', ['ast', 'astroid'])
+@pytest.mark.parametrize('padded', [True, False])
+@pytest.mark.parametrize('prefix, definition', [
+  ('', '@deco\ndef f(): pass'),
+  ('if True:\n', '  @deco\n  async def f():\n    pass'),
+  ('', '@deco\n@other\nclass C:\n  pass'),
+  ('', '@deco(\n  1\n)\ndef f(): pass'),
+  ('', '@\\\n  deco\ndef f(): pass'),
+  pytest.param('', '@ (d\u00e9co)\nclass C: pass', marks=pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="Requires relaxed decorator grammar")),
+  pytest.param('if True:\n', '  @(\n    # @ in a comment\n    deco\n  )\n  def f(): pass',
+    marks=pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires relaxed decorator grammar")),
+  pytest.param('', '@(deco["""\n@inside_string\n"""])\ndef f(): pass',
+    marks=pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires relaxed decorator grammar")),
+  pytest.param('', '@(left\n  @ right)\ndef f(): pass',
+    marks=pytest.mark.skipif(sys.version_info < (3, 9), reason="Requires relaxed decorator grammar")),
+  ('if True:\n', '\t@deco\n\tdef f(): pass'),
+  ('if True:\n', '  \f  @deco\n  def f(): pass'),
+  ('', '@deco\r\ndef f(): pass'),
+  ('', '@deco\rdef f(): pass'),
+])
+def test_decorated_definition_range(parser_name, padded, prefix, definition):
+  parser = ast if parser_name == 'ast' else pytest.importorskip('astroid')
+  source = prefix + definition + '\n# trailing comment\n'
+  tree = parser.parse(source)
+  node = tree.body[0].body[0] if prefix else tree.body[0]
+  atext = ASTText(source, tree=tree)
+  expected = definition if padded else definition.lstrip(' \t\f')
+  start = len(prefix) + len(definition) - len(expected)
+
+  assert atext.get_text(node, padded=padded) == expected
+  assert atext.get_text_range(node, padded=padded) == (start, len(prefix + definition))
+  assert atext._asttokens is None
 
 
 def is_fstring_internal_node(node):
