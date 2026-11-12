@@ -335,6 +335,19 @@ class ASTText(ASTTextBase):
       start_node = node
 
     start_lineno = start_node.lineno
+    start_col_offset = self._line_numbers.from_utf8_col(start_lineno, start_node.col_offset)
+    if decorators:
+      # The decorator expression excludes the @ and may start on a later line
+      # after opening parentheses or an explicit line continuation.
+      for lineno in range(start_lineno, 0, -1):
+        line_start = self._line_numbers.line_to_offset(lineno, 0)
+        line_end = self._line_numbers.line_to_offset(lineno + 1, 0)
+        line = self._text[line_start:line_end]
+        stripped = line.lstrip(' \t\f')
+        if stripped.startswith('@'):
+          start_lineno = lineno
+          start_col_offset = len(line) - len(stripped)
+          break
     end_node = last_stmt(node)
 
     # Include leading indentation for multiline statements.
@@ -355,8 +368,6 @@ class ASTText(ASTTextBase):
         )
     ):
       start_col_offset = 0
-    else:
-      start_col_offset = self._line_numbers.from_utf8_col(start_lineno, start_node.col_offset)
 
     start = (start_lineno, start_col_offset)
 
