@@ -7,14 +7,11 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    # setup-python has no Python 3.8 or 3.9 builds for Ubuntu 26.04 (now ubuntu-latest).
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         python-version:
-          - 3.8
-          - 3.9
           - '3.10'
           - 3.11
           - 3.12
@@ -25,12 +22,19 @@ jobs:
         astroid-version:
           - ''
         include:
+          # setup-python has no Python 3.8 or 3.9 builds for Ubuntu 26.04 (now ubuntu-latest).
+          - python-version: '3.8'
+            os: ubuntu-24.04
+          - python-version: '3.9'
+            os: ubuntu-24.04
           # Test recent Python on Astroid v2 and v3 too (the above natural tests will
           # pick up the latest Astroid version for these Python versions)
           - python-version: '3.8'
             astroid-version: '<3'
+            os: ubuntu-24.04
           - python-version: '3.9'
             astroid-version: '<3'
+            os: ubuntu-24.04
           - python-version: '3.10'
             astroid-version: '<3'
           - python-version: '3.11'
