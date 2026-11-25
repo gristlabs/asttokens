@@ -203,22 +203,16 @@ class MarkTokens:
     # not have their own positions, and for repeated or normalized names.
     if isinstance(node, (ast.Import, ast.ImportFrom)):
       current = self._code.next_token(self._code.find_token(first_token, token.NAME, 'import'))
-      if util.match_token(current, token.OP, '('):
-        current = self._code.next_token(current)
-      for alias in node.names:
-        alias_node = cast(AstNode, alias)
-        alias_node.first_token = current
-        end = current
-        following = self._code.next_token(end)
-        while util.match_token(following, token.OP, '.'):
-          end = self._code.next_token(following)
-          following = self._code.next_token(end)
-        if util.match_token(following, token.NAME, 'as'):
-          end = self._code.next_token(following)
-          following = self._code.next_token(end)
-        alias_node.last_token = end
-        current = (self._code.next_token(following)
-                   if util.match_token(following, token.OP, ',') else following)
+      aliases = iter(node.names)
+      alias_node = None
+      for tok in self._code.token_range(current, last_token):
+        if util.match_token(tok, token.OP, ','):
+          alias_node = None
+        elif not (util.match_token(tok, token.OP, '(') or util.match_token(tok, token.OP, ')')):
+          if alias_node is None:
+            alias_node = cast(AstNode, next(aliases))
+            alias_node.first_token = tok
+          alias_node.last_token = tok
     return first_token, last_token
 
   visit_importfrom = visit_import
