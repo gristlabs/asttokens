@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # setup-python has no Python 3.8 or 3.9 builds for Ubuntu 26.04 (now ubuntu-latest).
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +63,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade coveralls "pytest<9.0" setuptools setuptools_scm pep517
+          pip install --upgrade "pytest<9.0" setuptools setuptools_scm pep517
           if [ '${{ matrix.astroid-version }}' = 'none' ]; then
             pip install '.[test-no-astroid]'
             python -c "import importlib.util; assert importlib.util.find_spec('astroid') is None"
@@ -88,6 +89,8 @@ jobs:
           pytest -n auto -m slow
 
       - name: Collect coverage results
+        # Skip on pypy: coveralls depends on pydantic-core, which fails to build on pypy-3.10.
+        if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
