@@ -3,6 +3,7 @@ import ast
 import io
 import sys
 import token
+import tokenize
 import unittest
 
 import pytest
@@ -112,6 +113,30 @@ def test_expect_token():
   tok = atok.tokens[0]
   with pytest.raises(ValueError):
     asttokens.util.expect_token(tok, token.OP)
+
+
+def test_token_exact_type_matches_tokenize():
+  source = "result = (left + right) ** 2 # total\n"
+  standard = list(tokenize.generate_tokens(io.StringIO(source).readline))
+  annotated = asttokens.ASTTokens(source).tokens
+  assert len(annotated) == len(standard)
+  for actual, expected in zip(annotated, standard):
+    assert actual.exact_type == expected.exact_type
+    assert actual[:5] == expected
+    assert len(actual) == 8
+
+
+@pytest.mark.parametrize("operator", token.EXACT_TOKEN_TYPES)
+def test_token_exact_type_for_operators(operator):
+  fields = (token.OP, operator, (1, 0), (1, len(operator)), operator)
+  actual = asttokens.util.Token(*fields, 0, 0, len(operator))
+  assert actual.exact_type == tokenize.TokenInfo(*fields).exact_type
+
+
+@pytest.mark.parametrize("kind, text", [(token.OP, "unknown"), (token.STRING, "+")])
+def test_token_exact_type_falls_back_to_type(kind, text):
+  actual = asttokens.util.Token(kind, text, (1, 0), (1, len(text)), text, 0, 0, len(text))
+  assert actual.exact_type == kind
 
 
 def test_generate_tokens_normalizes_lone_carriage_returns():
