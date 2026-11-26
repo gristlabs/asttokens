@@ -194,6 +194,29 @@ class MarkTokens:
       first_token = self._code.prev_token(first_token)
     return first_token, last_token
 
+  def visit_import(
+    self, node: AstNode, first_token: util.Token, last_token: util.Token
+  ) -> Tuple[util.Token, util.Token]:
+    # Astroid stores import aliases as tuples, not child nodes. For stdlib AST,
+    # mark the whole alias, including dotted names and an optional "as" name.
+    # Walking in source order also works before Python 3.10, when aliases did
+    # not have their own positions, and for repeated or normalized names.
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+      current = self._code.next_token(self._code.find_token(first_token, token.NAME, 'import'))
+      aliases = iter(node.names)
+      alias_node = None
+      for tok in self._code.token_range(current, last_token):
+        if util.match_token(tok, token.OP, ','):
+          alias_node = None
+        elif not (util.match_token(tok, token.OP, '(') or util.match_token(tok, token.OP, ')')):
+          if alias_node is None:
+            alias_node = cast(AstNode, next(aliases))
+            alias_node.first_token = tok
+          alias_node.last_token = tok
+    return first_token, last_token
+
+  visit_importfrom = visit_import
+
   def handle_attr(
     self, node: AstNode, first_token: util.Token, last_token: util.Token
   ) -> Tuple[util.Token, util.Token]:
