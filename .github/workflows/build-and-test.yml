@@ -7,13 +7,11 @@ on:
   workflow_dispatch:
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         python-version:
-          - 3.8
-          - 3.9
           - '3.10'
           - 3.11
           - 3.12
@@ -24,12 +22,19 @@ jobs:
         astroid-version:
           - ''
         include:
+          # setup-python has no Python 3.8 or 3.9 for ubuntu-latest (from 26.04)
+          - python-version: '3.8'
+            os: ubuntu-24.04
+          - python-version: '3.9'
+            os: ubuntu-24.04
           # Test recent Python on Astroid v2 and v3 too (the above natural tests will
           # pick up the latest Astroid version for these Python versions)
           - python-version: '3.8'
             astroid-version: '<3'
+            os: ubuntu-24.04
           - python-version: '3.9'
             astroid-version: '<3'
+            os: ubuntu-24.04
           - python-version: '3.10'
             astroid-version: '<3'
           - python-version: '3.11'
@@ -62,7 +67,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade coveralls "pytest<9.0" setuptools setuptools_scm pep517
+          pip install --upgrade "pytest<9.0" setuptools setuptools_scm pep517
           if [ '${{ matrix.astroid-version }}' = 'none' ]; then
             pip install '.[test-no-astroid]'
             python -c "import importlib.util; assert importlib.util.find_spec('astroid') is None"
@@ -88,6 +93,8 @@ jobs:
           pytest -n auto -m slow
 
       - name: Collect coverage results
+        # Skip on pypy: coveralls depends on pydantic-core, which fails to build on pypy-3.10.
+        if: ${{ !startsWith(matrix.python-version, 'pypy') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
