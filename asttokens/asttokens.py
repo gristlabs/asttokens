@@ -31,10 +31,8 @@ class ASTTextBase(metaclass=abc.ABCMeta):
   def __init__(self, source_text: str, filename: str) -> None:
     self._filename = filename
 
-    # Decode source after parsing to let Python 2 handle coding declarations.
-    # (If the encoding was not utf-8 compatible, then even if it parses correctly,
-    # we'll fail with a unicode error here.)
-    source_text = str(source_text)
+    # Decode UTF-8 bytes so token positions refer to the unicode source text.
+    source_text = source_text.decode('utf-8-sig') if isinstance(source_text, bytes) else str(source_text)
 
     self._text = source_text
     self._line_numbers = LineNumbers(source_text)
@@ -85,7 +83,8 @@ class ASTTokens(ASTTextBase):
 
   ``source_text`` must be a unicode or UTF8-encoded string. If you pass in UTF8 bytes, remember
   that all offsets you'll get are to the unicode text, which is available as the ``.text``
-  property.
+  property. A UTF-8 byte-order mark is removed, and encoding declarations do not override
+  the UTF-8 decoding of byte input.
 
   If ``parse`` is set, the ``source_text`` will be parsed with ``ast.parse()``, and the resulting
   tree marked with token info and made available as the ``.tree`` property.
@@ -108,7 +107,8 @@ class ASTTokens(ASTTextBase):
   ) -> None:
     super().__init__(source_text, filename)
 
-    self._tree = ast.parse(source_text, filename) if parse else tree
+    parse_source = self._text if isinstance(source_text, bytes) else source_text
+    self._tree = ast.parse(parse_source, filename) if parse else tree
 
     # Tokenize the code.
     if tokens is None:
